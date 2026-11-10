@@ -1,0 +1,1 @@
+export const PVE_CONFIG={secretQuestions:15,secretRoundMs:15_000,secretPass:12,secretXp:20,bossQuestions:10,bossRoundMs:12_000,bossDamage:10,bossHpPerPlayer:60,bossMinPlayers:2,bossMaxPlayers:20,bossMinCorrect:5,bossXp:30,schedulerMs:500}as const;

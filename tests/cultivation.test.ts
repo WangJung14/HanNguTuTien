@@ -1,0 +1,129 @@
+import Database from 'better-sqlite3';
+import { describe, expect, it } from 'vitest';
+import { applyProgressMigrations } from '../src/modules/bag/infrastructure/migrations.js';
+import { applyDeckMigrations } from '../src/modules/decks/infrastructure/migrations.js';
+import { applyDictationMigrations } from '../src/modules/dictation/infrastructure/migrations.js';
+import { applyCultivationMigrations } from '../src/modules/cultivation/infrastructure/migrations.js';
+import { SqliteCultivationRepository } from '../src/modules/cultivation/infrastructure/sqlite-cultivation.repository.js';
+import { XpService } from '../src/modules/cultivation/application/xp.service.js';
+import { RealmService } from '../src/modules/cultivation/application/realm.service.js';
+import { BreakthroughService } from '../src/modules/cultivation/application/breakthrough.service.js';
+import { DiscordRoleSync } from '../src/modules/cultivation/infrastructure/discord-role-sync.js';
+import type { DictationService } from '../src/modules/dictation/index.js';
+import type { Guild } from 'discord.js';
+
+function setup() {
+  const sqlite = new Database(':memory:');
+  sqlite.pragma('foreign_keys = ON');
+  applyProgressMigrations(sqlite); applyDeckMigrations(sqlite); applyDictationMigrations(sqlite); applyCultivationMigrations(sqlite);
+  const repository = new SqliteCultivationRepository(sqlite);
+  return { sqlite, repository, xp: new XpService(repository), realms: new RealmService(repository) };
+}
+
+const questions = Array.from({ length: 10 }, (_, index) => ({
+  entryId: index + 1, simplified: `词${index}`, traditional: `詞${index}`,
+  pinyin: `cí ${index}`, meaningVi: `từ ${index}`, pinyinKey: `ci${index}`,
+}));
+function fakeDictation(): DictationService {
+  return {
+    listOwnedDecks: () => [{ id: 1, name: 'Bộ Thiên Kiếp', wordCount: 10 }],
+    getEligibleQuestions: () => questions,
+    choosePublicQuestions: (items: typeof questions, count: number) => items.slice(0, count).map(({ pinyinKey: _, ...q }) => q),
+    synthesizePublic: async () => ({ data: Buffer.from('wav'), format: 'wav' as const }),
+    evaluatePublicAnswer: (answer: string, question: { simplified: string; traditional: string }) =>
+      answer === question.simplified || answer === question.traditional,
+  } as unknown as DictationService;
+}
+
+describe('Cultivation XP', () => {
+  it('scores actual dictation outcomes and prevents duplicate rewards', () => {
+    const { sqlite, xp } = setup();
+    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 }).awarded).toBe(10);
+    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 1, isCorrect: true, usedHint: false, replayCount: 1 }).awarded).toBe(7);
+    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 2, isCorrect: true, usedHint: true, replayCount: 0 }).awarded).toBe(4);
+    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 }).duplicate).toBe(true);
+    expect(xp.awardCompletion('g', 'u', 's', 10, 10, true).map((x) => x.awarded)).toEqual([20, 30]);
+    sqlite.close();
+  });
+
+  it('caps daily XP, records a zero claim, and stays idempotent under competing calls', () => {
+    const { sqlite, repository } = setup();
+    const now = '2026-11-10T00:00:00.000Z';
+    const first = repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
+    const second = repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
+    const capped = repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-10', now, 200);
+    expect(first).toMatchObject({ awarded: 200, capped: true });
+    expect(second).toMatchObject({ awarded: 0, duplicate: true });
+    expect(capped).toMatchObject({ awarded: 0, capped: true });
+    expect(repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-11', now, 200).duplicate).toBe(true);
+    expect(repository.getOrCreateProfile('g', 'u', now).totalXp).toBe(200);
+    sqlite.close();
+  });
+});
+
+describe('Realm progression and breakthrough', () => {
+  it('raises minor realms automatically but locks the next major realm', () => {
+    const { sqlite, repository, realms } = setup();
+    repository.addXp('g', 'u', 1750, 'seed', 'seed', null, '2026-11-10', new Date().toISOString(), 999999);
+    const locked = realms.getProgress('g', 'u');
+    expect(locked.major.name).toBe('Phàm Nhân');
+    expect(locked.needsBreakthrough).toBe(true);
+    repository.promote('g', 'u', 0, 1, new Date().toISOString());
+    expect(realms.getProgress('g', 'u').label).toContain('tầng 9');
+    sqlite.close();
+  });
+
+  it('persists an 8/10 success and promotes atomically', async () => {
+    const { sqlite, repository, realms } = setup();
+    repository.addXp('g', 'u', 100, 'seed', 'seed-pass', null, '2026-11-10', new Date().toISOString(), 999999);
+    const service = new BreakthroughService(repository, realms, fakeDictation());
+    let current = (await service.start('g', 'u', 1, () => 0)).attempt;
+    for (let index = 0; index < 10; index += 1) {
+      current = service.answer(current, index < 8 ? current.questions[index]!.simplified : 'sai');
+      current = (await service.advance(current)).attempt;
+    }
+    expect(current.status).toBe('passed'); expect(current.correctCount).toBe(8);
+    expect(repository.getOrCreateProfile('g', 'u', new Date().toISOString()).majorIndex).toBe(1);
+    const restarted = new SqliteCultivationRepository(sqlite);
+    expect(restarted.getAttempt(current.id)?.status).toBe('passed');
+    sqlite.close();
+  });
+
+  it('fails below 8/10 without losing XP and enforces cooldown', async () => {
+    const { sqlite, repository, realms } = setup();
+    repository.addXp('g', 'u', 100, 'seed', 'seed-fail', null, '2026-11-10', new Date().toISOString(), 999999);
+    const service = new BreakthroughService(repository, realms, fakeDictation());
+    let current = (await service.start('g', 'u', 1)).attempt;
+    for (let index = 0; index < 10; index += 1) {
+      current = service.answer(current, index < 7 ? current.questions[index]!.simplified : 'sai');
+      current = (await service.advance(current)).attempt;
+    }
+    expect(current.status).toBe('failed');
+    expect(repository.getOrCreateProfile('g', 'u', new Date().toISOString())).toMatchObject({ totalXp: 100, majorIndex: 0 });
+    await expect(service.start('g', 'u', 1)).rejects.toThrow('thử lại');
+    sqlite.close();
+  });
+});
+
+describe('Cultivation role synchronization', () => {
+  it('keeps pending state after Discord failure and clears it on retry', async () => {
+    const { sqlite, repository } = setup();
+    const now = new Date().toISOString(); repository.getOrCreateProfile('g', 'u', now);
+    repository.setRealmRole('g', 1, 'role-1', now);
+    let allowed = false;
+    const memberRoles = new Set<string>();
+    const role = { id: 'role-1', name: 'Luyện Khí', position: 1 };
+    const guild = { id: 'g', members: {
+      me: { permissions: { has: () => allowed }, roles: { highest: { comparePositionTo: () => 1 } } },
+      fetch: async () => ({ roles: { cache: { has: (id: string) => memberRoles.has(id) }, add: async (id: string) => { memberRoles.add(id); }, remove: async (ids: string[]) => { ids.forEach((id) => memberRoles.delete(id)); } } }),
+    }, roles: { cache: { get: () => role }, fetch: async () => role } } as unknown as Guild;
+    const sync = new DiscordRoleSync(repository);
+    expect((await sync.sync(guild, 'u', 1)).synced).toBe(false);
+    expect(repository.getOrCreateProfile('g', 'u', now).roleSyncPending).toBe(true);
+    allowed = true;
+    expect((await sync.sync(guild, 'u', 1)).synced).toBe(true);
+    expect(repository.getOrCreateProfile('g', 'u', now).roleSyncPending).toBe(false);
+    expect(memberRoles.has('role-1')).toBe(true);
+    sqlite.close();
+  });
+});

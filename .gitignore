@@ -1,0 +1,50 @@
+# Dependencies and generated TypeScript output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Secrets and local environment overrides
+.env
+.env.*
+!.env.example
+
+# Writable/runtime databases and SQLite sidecar files
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+
+# The read-only dictionary is a deploy asset, not user progress.
+!data/cvdict-app.sqlite
+
+# Raw/imported data and runtime caches
+data/raw/
+data/processed/
+data/dictation-audio-cache/
+
+# Local Piper installation, downloaded models and generated audio
+.venv-piper/
+tts/models/
+tts/output/
+*.onnx
+*.onnx.json
+*.wav
+*.mp3
+
+# Local archives, backups, logs and temporary files
+*.zip
+*.bak
+*.backup
+*.log
+*.tmp
+*.temp
+tmp/
+.tmp/
+
+# Editor and operating-system metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
