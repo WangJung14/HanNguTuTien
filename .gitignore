@@ -41,6 +41,7 @@ tts/output/
 *.temp
 tmp/
 .tmp/
+backups/
 
 # Editor and operating-system metadata
 .vscode/

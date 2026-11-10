@@ -13,6 +13,11 @@ import { QuestService } from './modules/quests/index.js';
 import { attachMeditationRunner,MeditationService } from './modules/meditation/index.js';
 import{MountainMatchService,MountainQuestionService,MountainScheduler,SqliteMountainRepository}from'./modules/mountain/index.js';
 import{PveScheduler,PveService,QuestionPackService,SqlitePveRepository}from'./modules/pve/index.js';
+import { closeHealthServer, startHealthServer } from './shared/http/health-server.js';
+
+if ((process.env.DATABASE_PROVIDER || 'sqlite').toLowerCase() === 'postgres') {
+  throw new Error('PostgreSQL runtime repositories are not enabled yet. Refusing to fall back to ephemeral SQLite in production.');
+}
 
 const config = getDiscordConfig();
 const dictionaryConnection = openDictionary();
@@ -54,6 +59,7 @@ const client = buildBot(dictionaryService, bagService, deckService, dictationSer
   repository: cultivationRepository, realms: realmService, xp: xpService, breakthrough: breakthroughService, roleSync,
 },{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler});
 const stopMeditation=attachMeditationRunner(client,meditationService);
+const healthServer=startHealthServer(client);
 mountainScheduler.start(client);
 pveScheduler.start(client);
 
@@ -61,6 +67,7 @@ async function shutdown() {
   stopMeditation();
   mountainScheduler.stop();
   pveScheduler.stop();
+  await closeHealthServer(healthServer);
   client.destroy();
   progressConnection.close();
   dictionaryConnection.close();

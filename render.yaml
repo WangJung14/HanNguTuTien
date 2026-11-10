@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: han-ngu-tu-tien-bot
+    runtime: node
+    plan: free
+    numInstances: 1
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PROVIDER
+        value: postgres
+      - key: DICTIONARY_DB_PATH
+        value: ./data/cvdict-app.sqlite
+      - key: PVE_QUESTION_PACK_PATH
+        value: ./data/question-packs/hsk-sample.json
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_DEV_GUILD_ID
+        sync: false
+      - key: SUPABASE_DATABASE_URL
+        sync: false

@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24.17.0" },
+  "engines": {
+    "node": ">=24.17.0"
+  },
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
@@ -12,12 +14,18 @@
     "register": "tsx src/scripts/register-commands.ts",
     "check:db": "tsx src/scripts/check-dictionary.ts",
     "test": "vitest run"
+    ,"db:pg:migrate": "tsx src/scripts/postgres-migrate.ts"
+    ,"db:pg:import": "tsx src/scripts/postgres-import.ts"
+    ,"db:pg:verify": "tsx src/scripts/postgres-verify.ts"
+    ,"db:pg:backup": "tsx src/scripts/postgres-backup.ts"
+    ,"db:pg:rollback": "tsx src/scripts/postgres-rollback.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "discord.js": "^14.27.0",
     "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.44.0"
+    "drizzle-orm": "^0.44.0",
+    "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
