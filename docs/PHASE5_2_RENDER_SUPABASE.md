@@ -72,3 +72,7 @@ External monitor gọi `GET https://<service>.onrender.com/health` mỗi 8 phút
 ## TTS
 
 CVDICT read-only và bộ câu hỏi `data/question-packs/hsk-sample.json` cần được đóng gói cùng source. Không dùng filesystem Render cho progress. Piper nên chạy như một HTTP service riêng; cấu hình URL phải truy cập được từ Render. Bảo vệ endpoint Piper khỏi truy cập lạm dụng. Piper chưa được benchmark trong deployment này; theo dõi độ trễ, bộ nhớ và giới hạn dịch vụ trước khi mở rộng sử dụng.
+
+Blueprint hiện khai báo `han-ngu-tu-tien-piper` là Free Web Service dùng Dockerfile `piper/Dockerfile`; model `zh_CN-huayan-medium` được tải trong lúc build image. Service phải ở cùng region với bot. Sau khi sync Blueprint và deploy xong, đặt `PIPER_TTS_URL` ở bot thành URL HTTPS công khai của Piper, ví dụ `https://han-ngu-tu-tien-piper.onrender.com`, và `PIPER_TTS_MODEL=zh_CN-huayan-medium`.
+
+Private Service không thuộc các loại service free. Free Web Service công khai là lựa chọn không mất phí, nhưng Piper HTTP Server mặc định không có xác thực: endpoint có thể được gọi bởi bất kỳ ai biết hoặc tìm thấy URL, không chỉ bạn. Free Web Service cũng ngủ sau một khoảng không có traffic; lần gọi đầu có thể cần chờ service khởi động, nên hãy mở `/info` trước rồi mới thử `/khaobai`. Xem [Render Free services](https://render.com/docs/free) và [Private Services](https://render.com/docs/private-services).

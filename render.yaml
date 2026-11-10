@@ -32,3 +32,10 @@ services:
         sync: false
       - key: SUPABASE_DATABASE_URL
         sync: false
+  - type: web
+    name: han-ngu-tu-tien-piper
+    runtime: docker
+    plan: free
+    dockerfilePath: ./piper/Dockerfile
+    healthCheckPath: /info
+    autoDeployTrigger: off
