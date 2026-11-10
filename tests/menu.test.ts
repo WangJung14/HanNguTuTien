@@ -19,6 +19,7 @@ describe('Bot menu', () => {
     expect(text).toContain('/tuvi');
     expect(text).toContain('/leonui');
     expect(text).toContain('/xpkenh');
+    expect(text).toContain('/xpadmin');
     expect(menu.description).toContain('chỉ hiển thị với bạn');
   });
 });

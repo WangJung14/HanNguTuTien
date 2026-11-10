@@ -1,6 +1,7 @@
 import type { Sql } from 'postgres';
+import { REALMS } from '../domain/cultivation.config.js';
 import type {
-  BreakthroughAttempt, CultivationProfile, CultivationRepository, XpAward, XpLedgerEntry,
+  AdminXpAction, AdminXpAdjustment, BreakthroughAttempt, CultivationProfile, CultivationRepository, XpAward, XpLedgerEntry,
 } from '../domain/cultivation.types.js';
 
 type ProfileRow = Omit<CultivationProfile, 'roleSyncPending'> & { roleSyncPending: number };
@@ -257,6 +258,56 @@ export class PostgresCultivationRepository implements CultivationRepository {
       VALUES (${guildId},${channelId},${now})
       ON CONFLICT (guild_id) DO UPDATE SET channel_id=EXCLUDED.channel_id,updated_at=EXCLUDED.updated_at
     `;
+  }
+
+  async adjustXpAsAdmin(guildId: string, userId: string, actorId: string, adjustmentId: string,
+    action: AdminXpAction, amount: number, reason: string, now: string): Promise<AdminXpAdjustment> {
+    return this.sql.begin(async (transaction) => {
+      await transaction`
+        INSERT INTO cultivation_profiles (guild_id,user_id,created_at,updated_at)
+        VALUES (${guildId},${userId},${now},${now}) ON CONFLICT DO NOTHING
+      `;
+      const profiles = await transaction<ProfileRow[]>`
+        SELECT ${transaction.unsafe(PROFILE_COLUMNS)} FROM cultivation_profiles
+        WHERE guild_id=${guildId} AND user_id=${userId} FOR UPDATE
+      `;
+      const current = profiles[0];
+      if (!current) throw new Error('Cultivation profile could not be locked for admin XP adjustment.');
+
+      const duplicates = await transaction<AdminXpAdjustment[]>`
+        SELECT id,guild_id AS "guildId",user_id AS "userId",actor_id AS "actorId",action,amount,reason,
+          previous_total_xp AS "previousTotalXp",new_total_xp AS "newTotalXp",
+          previous_major_index AS "previousMajorIndex",new_major_index AS "newMajorIndex",created_at AS "createdAt"
+        FROM xp_admin_adjustments WHERE id=${adjustmentId}
+      `;
+      if (duplicates[0]) return { ...duplicates[0], duplicate: true };
+
+      const newTotalXp = action === 'reward' ? current.totalXp + amount : Math.max(0, current.totalXp - amount);
+      let newMajorIndex = current.majorIndex;
+      if (action === 'penalty') {
+        while (newMajorIndex > 0 && newTotalXp < REALMS[newMajorIndex]!.minXp) newMajorIndex -= 1;
+      }
+      const actualAmount = action === 'reward' ? amount : current.totalXp - newTotalXp;
+      await transaction`
+        UPDATE cultivation_profiles
+        SET total_xp=${newTotalXp},major_index=${newMajorIndex},
+          role_sync_pending=${newMajorIndex !== current.majorIndex ? 1 : current.roleSyncPending},
+          updated_at=${now}
+        WHERE guild_id=${guildId} AND user_id=${userId}
+      `;
+      const rows = await transaction<AdminXpAdjustment[]>`
+        INSERT INTO xp_admin_adjustments
+          (id,guild_id,user_id,actor_id,action,amount,reason,previous_total_xp,new_total_xp,
+           previous_major_index,new_major_index,created_at)
+        VALUES (${adjustmentId},${guildId},${userId},${actorId},${action},${actualAmount},${reason},
+          ${current.totalXp},${newTotalXp},${current.majorIndex},${newMajorIndex},${now})
+        RETURNING id,guild_id AS "guildId",user_id AS "userId",actor_id AS "actorId",action,amount,reason,
+          previous_total_xp AS "previousTotalXp",new_total_xp AS "newTotalXp",
+          previous_major_index AS "previousMajorIndex",new_major_index AS "newMajorIndex",created_at AS "createdAt"
+      `;
+      if (!rows[0]) throw new Error('Admin XP adjustment was not persisted.');
+      return { ...rows[0], duplicate: false };
+    });
   }
 
   async listAttempts(guildId: string, userId: string, limit: number): Promise<BreakthroughAttempt[]> {

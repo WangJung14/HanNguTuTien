@@ -3,7 +3,7 @@
 ## Trạng thái hiện tại
 
 - Supabase Session Pooler đã kết nối thành công.
-- PostgreSQL schema hiện cần chạy lại migration để có bảng cấu hình kênh thông báo XP (schema v2); migration bật RLS cho bảng này.
+- PostgreSQL schema cần migration v3 để thêm cấu hình kênh XP và nhật ký thưởng/phạt tu vi; migration bật RLS cho các bảng mới.
 - Dữ liệu `progress.sqlite` đã import và verify theo số bản ghi, tổng XP, profile XP và reward key.
 - SQLite gốc không bị chỉnh sửa/xóa.
 - Có scripts migrate, import, verify, backup và rollback.
@@ -12,7 +12,7 @@
 
 Runtime hiện đã có PostgreSQL adapters cho Bag, Deck, Dictation, Cultivation/XP, Quest, Meditation, Mountain và PvE; Dictionary tiếp tục đọc `data/cvdict-app.sqlite` ở chế độ chỉ đọc. `DATABASE_PROVIDER=postgres` được chọn trong `render.yaml`, không fallback sang SQLite nếu PostgreSQL lỗi.
 
-**Trước khi deploy bản có `/xpkenh`, hãy chạy `npm.cmd run db:pg:migrate` từ máy quản trị để thêm bảng cấu hình mới vào Supabase.** Migration dùng `CREATE TABLE IF NOT EXISTS`, không xóa dữ liệu hiện có. Bộ test, typecheck và build chạy cục bộ; chưa có kiểm thử tích hợp PostgreSQL trong phiên này.
+**Trước khi deploy bản có `/xpkenh` và `/xpadmin`, hãy chạy `npm.cmd run db:pg:migrate` từ máy quản trị để thêm các bảng mới vào Supabase.** Migration dùng `CREATE TABLE IF NOT EXISTS`, không xóa dữ liệu hiện có. Bộ test, typecheck và build chạy cục bộ; chưa có kiểm thử tích hợp PostgreSQL trong phiên này.
 
 ## Commands dữ liệu
 

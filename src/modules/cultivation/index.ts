@@ -13,3 +13,6 @@ export {
   handleTuvi, handleXpkenh, handleDotpha, handleLichsu, handleRealmRole,
 } from './presentation/cultivation.commands.js';
 export { handleCultivationButton, handleCultivationModal } from './presentation/breakthrough-interaction.handler.js';
+export {
+  xpAdminDefinition, handleXpAdminCommand, handleXpAdminButton, handleXpAdminModal,
+} from './presentation/xp-admin.handler.js';

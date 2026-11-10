@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
+import { REALMS } from '../domain/cultivation.config.js';
 import type {
-  BreakthroughAttempt, CultivationProfile, CultivationRepository, XpAward, XpLedgerEntry,
+  AdminXpAction, AdminXpAdjustment, BreakthroughAttempt, CultivationProfile, CultivationRepository, XpAward, XpLedgerEntry,
 } from '../domain/cultivation.types.js';
 
 type ProfileRow = Omit<CultivationProfile, 'roleSyncPending'> & { roleSyncPending: number };
@@ -170,6 +171,45 @@ export class SqliteCultivationRepository implements CultivationRepository {
     this.sqlite.prepare(`INSERT INTO xp_announcement_channels (guild_id,channel_id,updated_at)
       VALUES (?,?,?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id,updated_at=excluded.updated_at`)
       .run(guildId, channelId, now);
+  }
+
+  adjustXpAsAdmin(guildId: string, userId: string, actorId: string, adjustmentId: string,
+    action: AdminXpAction, amount: number, reason: string, now: string): AdminXpAdjustment {
+    return this.sqlite.transaction(() => {
+      const existing = this.sqlite.prepare(`SELECT id,guild_id AS guildId,user_id AS userId,actor_id AS actorId,
+        action,amount,reason,previous_total_xp AS previousTotalXp,new_total_xp AS newTotalXp,
+        previous_major_index AS previousMajorIndex,new_major_index AS newMajorIndex,created_at AS createdAt
+        FROM xp_admin_adjustments WHERE id=?`).get(adjustmentId) as AdminXpAdjustment | undefined;
+      if (existing) return { ...existing, duplicate: true };
+
+      const current = this.getOrCreateProfile(guildId, userId, now);
+      const newTotalXp = action === 'reward' ? current.totalXp + amount : Math.max(0, current.totalXp - amount);
+      let newMajorIndex = current.majorIndex;
+      if (action === 'penalty') {
+        while (newMajorIndex > 0 && newTotalXp < REALMS[newMajorIndex]!.minXp) newMajorIndex -= 1;
+      }
+      const actualAmount = action === 'reward' ? amount : current.totalXp - newTotalXp;
+      this.sqlite.prepare(`UPDATE cultivation_profiles
+        SET total_xp=?,major_index=?,role_sync_pending=?,updated_at=?
+        WHERE guild_id=? AND user_id=?`).run(
+        newTotalXp, newMajorIndex, newMajorIndex !== current.majorIndex ? 1 : Number(current.roleSyncPending),
+        now, guildId, userId,
+      );
+      const adjustment: AdminXpAdjustment = {
+        id: adjustmentId, guildId, userId, actorId, action, amount: actualAmount, reason,
+        previousTotalXp: current.totalXp, newTotalXp, previousMajorIndex: current.majorIndex,
+        newMajorIndex, createdAt: now, duplicate: false,
+      };
+      this.sqlite.prepare(`INSERT INTO xp_admin_adjustments
+        (id,guild_id,user_id,actor_id,action,amount,reason,previous_total_xp,new_total_xp,
+         previous_major_index,new_major_index,created_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+        adjustment.id, adjustment.guildId, adjustment.userId, adjustment.actorId, adjustment.action,
+        adjustment.amount, adjustment.reason, adjustment.previousTotalXp, adjustment.newTotalXp,
+        adjustment.previousMajorIndex, adjustment.newMajorIndex, adjustment.createdAt,
+      );
+      return adjustment;
+    })();
   }
 
   listAttempts(guildId: string, userId: string, limit: number): BreakthroughAttempt[] {

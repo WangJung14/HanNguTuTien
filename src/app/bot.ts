@@ -9,7 +9,8 @@ import {
 } from '../modules/dictation/index.js';
 import {
   CultivationError, handleCultivationButton, handleCultivationModal, handleDotpha, handleLichsu,
-  handleRealmRole, handleTuvi, handleXpkenh, type BreakthroughService, type DiscordRoleSync, type RealmService,
+  handleRealmRole, handleTuvi, handleXpkenh, handleXpAdminCommand, handleXpAdminButton, handleXpAdminModal,
+  type BreakthroughService, type DiscordRoleSync, type RealmService,
   type CultivationRepository, type XpService,
 } from '../modules/cultivation/index.js';
 import { handleBequan,handleBequanConfig,handleDiemdanh,handleNhiemvu,type QuestService } from '../modules/quests/index.js';
@@ -60,6 +61,10 @@ export function buildBot(
         await handleCultivationButton(interaction, cultivation.breakthrough, cultivation.roleSync);
         return;
       }
+      if (interaction.isButton() && interaction.customId.startsWith('xpadmin:')) {
+        await handleXpAdminButton(interaction);
+        return;
+      }
       if(interaction.isButton()&&interaction.customId.startsWith('mountain:')){await handleMountainButton(interaction,mountain.service,mountain.scheduler);return;}
       if(interaction.isButton()&&interaction.customId.startsWith('pve:')){await handlePveButton(interaction,pve.service,pve.scheduler);return;}
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('deck:')) {
@@ -76,6 +81,10 @@ export function buildBot(
       }
       if (interaction.isModalSubmit() && interaction.customId.startsWith('cultivation:')) {
         await handleCultivationModal(interaction, cultivation.breakthrough);
+        return;
+      }
+      if (interaction.isModalSubmit() && interaction.customId.startsWith('xpadmin:')) {
+        await handleXpAdminModal(interaction, cultivation.repository, cultivation.realms, cultivation.roleSync);
         return;
       }
       if (!interaction.isChatInputCommand()) return;
@@ -105,6 +114,7 @@ export function buildBot(
           break;
         case 'tuvi': await handleTuvi(interaction, cultivation.realms); break;
         case 'xpkenh': await handleXpkenh(interaction, cultivation.repository); break;
+        case 'xpadmin': await handleXpAdminCommand(interaction, cultivation.repository, cultivation.realms); break;
         case 'dotpha': await handleDotpha(interaction, cultivation.breakthrough); break;
         case 'lichsutuvi': await handleLichsu(interaction, cultivation.xp, cultivation.breakthrough); break;
         case 'canhgioirole': await handleRealmRole(interaction, cultivation.repository, cultivation.realms, cultivation.roleSync); break;

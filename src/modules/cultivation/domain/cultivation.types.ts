@@ -24,6 +24,12 @@ export type BreakthroughAttempt = {
   messageId: string | null; createdAt: string; updatedAt: string; completedAt: string | null;
 };
 export type XpAward = { awarded: number; duplicate: boolean; capped: boolean; totalXp: number };
+export type AdminXpAction = 'reward' | 'penalty';
+export type AdminXpAdjustment = {
+  id: string; guildId: string; userId: string; actorId: string; action: AdminXpAction;
+  amount: number; reason: string; previousTotalXp: number; newTotalXp: number;
+  previousMajorIndex: number; newMajorIndex: number; createdAt: string; duplicate: boolean;
+};
 
 export type Awaitable<T> = T | Promise<T>;
 
@@ -47,6 +53,8 @@ export interface CultivationRepository {
   getRealmRoles(guildId: string): Awaitable<Map<number, string>>;
   getXpAnnouncementChannel(guildId: string): Awaitable<string | null>;
   setXpAnnouncementChannel(guildId: string, channelId: string | null, now: string): Awaitable<void>;
+  adjustXpAsAdmin(guildId: string, userId: string, actorId: string, adjustmentId: string,
+    action: AdminXpAction, amount: number, reason: string, now: string): Awaitable<AdminXpAdjustment>;
   listAttempts(guildId: string, userId: string, limit: number): Awaitable<BreakthroughAttempt[]>;
 }
 

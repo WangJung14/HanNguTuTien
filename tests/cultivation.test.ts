@@ -79,6 +79,40 @@ describe('Cultivation XP', () => {
     expect(await repository.getXpAnnouncementChannel('g')).toBeNull();
     sqlite.close();
   });
+
+  it('audits admin rewards and penalties, clamps XP at zero, and demotes major realms', async () => {
+    const { sqlite, repository, realms } = setup();
+    const now = new Date().toISOString();
+    await repository.addXp('g', 'u', 2_500, 'seed', 'admin-adjustment-seed', null, '2026-11-10', now, 10_000);
+    expect(await repository.promote('g', 'u', 0, 2, now)).toBe(true);
+
+    const penalty = await repository.adjustXpAsAdmin(
+      'g', 'u', 'admin', 'interaction-penalty', 'penalty', 600, 'Lý do phạt', now,
+    );
+    expect(penalty).toMatchObject({
+      amount: 600, previousTotalXp: 2_500, newTotalXp: 1_900,
+      previousMajorIndex: 2, newMajorIndex: 1, duplicate: false,
+    });
+    expect((await realms.getProgress('g', 'u')).major.name).toBe('Luyện Khí');
+
+    const repeated = await repository.adjustXpAsAdmin(
+      'g', 'u', 'admin', 'interaction-penalty', 'penalty', 600, 'Lý do phạt', now,
+    );
+    expect(repeated).toMatchObject({ duplicate: true, newTotalXp: 1_900 });
+
+    const finalPenalty = await repository.adjustXpAsAdmin(
+      'g', 'u', 'admin', 'interaction-empty', 'penalty', 10_000, 'Phạt về 0', now,
+    );
+    expect(finalPenalty).toMatchObject({ amount: 1_900, newTotalXp: 0, newMajorIndex: 0 });
+
+    const reward = await repository.adjustXpAsAdmin(
+      'g', 'u', 'admin', 'interaction-reward', 'reward', 125, 'Thưởng sự kiện', now,
+    );
+    expect(reward).toMatchObject({ amount: 125, previousTotalXp: 0, newTotalXp: 125, newMajorIndex: 0 });
+    expect((await repository.getOrCreateProfile('g', 'u', now)).totalXp).toBe(125);
+    expect((sqlite.prepare('SELECT count(*) AS count FROM xp_admin_adjustments').get() as { count: number }).count).toBe(3);
+    sqlite.close();
+  });
 });
 
 describe('Realm progression and breakthrough', () => {

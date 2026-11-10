@@ -47,6 +47,12 @@ export function applyCultivationMigrations(sqlite: Database.Database): void {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS xp_announcement_channels (
       guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS xp_admin_adjustments (
+      id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+      action TEXT NOT NULL CHECK(action IN ('reward','penalty')), amount INTEGER NOT NULL CHECK(amount >= 0),
+      reason TEXT NOT NULL, previous_total_xp INTEGER NOT NULL, new_total_xp INTEGER NOT NULL,
+      previous_major_index INTEGER NOT NULL, new_major_index INTEGER NOT NULL, created_at TEXT NOT NULL
     )
   `);
 }

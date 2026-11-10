@@ -44,6 +44,7 @@ export function buildMenuEmbed(): EmbedBuilder {
         value: [
           '`/xpkenh dat kenh:<kênh>` — chọn nơi đăng thông báo XP.',
           '`/xpkenh xoa` — tắt thông báo XP.',
+          '`/xpadmin user:<thành viên>` — xem XP hiện tại, chọn thưởng/phạt, nhập số XP và lý do; thao tác được thông báo công khai.',
           '`/bequancauhinh kenh` — chọn phòng thoại Bế Quan.',
           '`/canhgioirole` — cấu hình role cảnh giới.',
         ].join('\n'),

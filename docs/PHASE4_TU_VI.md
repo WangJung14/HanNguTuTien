@@ -7,8 +7,11 @@
 - `/lichsutuvi`: xem XP ledger và những lần Thiên Kiếp gần đây.
 - `/xpkenh dat kenh:<kênh>`: admin có quyền Manage Server chọn kênh công khai nhận thông báo mỗi khi có XP mới.
 - `/xpkenh xoa`: tắt thông báo XP tự động.
+- `/xpadmin user:<thành viên>`: admin mở bảng riêng tư để xem XP hiện tại, rồi chọn **Thưởng tu vi** hoặc **Phạt tu vi**, nhập lượng XP và lý do.
 
 Thông báo chỉ gửi khi XP thực sự được cộng; claim trùng hoặc bị giới hạn còn 0 XP không tạo thông báo. Mỗi phần thưởng riêng được gửi riêng, vì vậy hoàn thành một phiên khảo bài có thể tạo nhiều tin nhắn. Bot cần quyền View Channel và Send Messages trong kênh đã chọn.
+
+Thao tác `/xpadmin` yêu cầu quyền **Manage Server**, nhập 1–10.000 XP mỗi lần và lý do bắt buộc. Kết quả được đăng ở kênh XP, gồm người thao tác, thành viên, số XP trước/sau và lý do. Mỗi thao tác được lưu riêng trong `xp_admin_adjustments`; submit trùng không áp dụng lại. Nhật ký điều chỉnh admin hiện chưa xuất hiện trong `/lichsutuvi`. Phạt có thể đưa XP về 0, tự hạ đại cảnh giới xuống mức phù hợp và thử đồng bộ role; nếu Discord từ chối, trạng thái đồng bộ được đánh dấu để admin xử lý.
 
 Thất bại Thiên Kiếp không trừ XP và áp dụng cooldown mặc định 6 giờ. Một người chỉ có một lần Thiên Kiếp đang hoạt động trong mỗi server.
 
@@ -56,6 +59,6 @@ npm.cmd run build
 npm.cmd start
 ```
 
-Sau khi deploy bản mới, đăng ký lại slash commands để xuất hiện `/xpkenh`. Cấu hình kênh một lần cho mỗi server; lựa chọn được lưu bền vững cùng dữ liệu tiến độ.
+Sau khi deploy bản mới, đăng ký lại slash commands để xuất hiện `/xpkenh` và `/xpadmin`. Cấu hình kênh một lần cho mỗi server; lựa chọn được lưu bền vững cùng dữ liệu tiến độ.
 
 Đặt role của bot cao hơn toàn bộ role cảnh giới muốn quản lý.

@@ -40,6 +40,7 @@ Các phiên khảo bài là riêng tư, chỉ bạn có thể thao tác. Mỗi s
 ## Tu vi, XP và nhiệm vụ
 
 - `/tuvi` — xem cảnh giới và tổng XP. Hồ sơ này hiển thị công khai.
+- Admin: `/xpadmin user:<thành viên>` — mở bảng thưởng/phạt tu vi.
 - `/lichsutuvi` — xem lịch sử XP và các lần đột phá; nội dung chỉ bạn thấy.
 - `/dotpha` — bắt đầu Thiên Kiếp khi đủ điều kiện. Discord sẽ yêu cầu chọn mã bộ từ.
 - `/nhiemvu` — xem nhiệm vụ trong ngày.
@@ -74,6 +75,15 @@ Các lệnh cấu hình cần quyền **Manage Server** (Quản lý máy chủ).
 
 Bot cần quyền **View Channel** và **Send Messages** tại kênh đó. Để tắt, dùng `/xpkenh xoa`.
 
+### Thưởng công trạng hoặc phạt tu vi
+
+1. Cấu hình kênh thông báo XP trước bằng `/xpkenh dat`.
+2. Gõ `/xpadmin` và chọn thành viên ở ô `user`.
+3. Bảng riêng tư hiện tu vi hiện tại. Chọn **Thưởng tu vi** hoặc **Phạt tu vi**.
+4. Nhập số XP từ 1 đến 10.000 và ghi lý do. Lý do sẽ được đưa vào thông báo công khai.
+
+Chỉ người có quyền **Manage Server** mới dùng được. Mức phạt không làm XP âm; nếu tổng XP thấp hơn mốc đại cảnh giới hiện tại, bot hạ đại cảnh giới về mức phù hợp và thử cập nhật role Discord. Bot lưu lại mỗi điều chỉnh để không áp dụng lặp nếu Discord gửi lại thao tác.
+
 ### Bế Quan và role cảnh giới
 
 - `/bequancauhinh kenh` — chọn phòng thoại cho Bế Quan.
@@ -89,4 +99,3 @@ Bot cần quyền **View Channel** và **Send Messages** tại kênh đó. Để
 - Công khai: kết quả `/tudien`, hồ sơ `/tuvi`, phòng chơi và thông báo XP trong kênh đã cấu hình.
 - Riêng tư: menu `/menu` và `/help`, `/tuikho`, lịch sử, nhiệm vụ cá nhân, cùng các phiên khảo bài.
 - Thành viên khác không thể dùng nút để thay đổi túi từ, bộ từ riêng hoặc phiên học của bạn.
-
