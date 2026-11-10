@@ -5,6 +5,7 @@ import {
 import type { BreakthroughService } from '../application/breakthrough.service.js';
 import type { DiscordRoleSync } from '../infrastructure/discord-role-sync.js';
 import { CultivationError } from '../domain/cultivation.types.js';
+import { REALMS } from '../domain/cultivation.config.js';
 import { buildBreakthroughAnswered, buildBreakthroughQuestion, buildBreakthroughResult } from './cultivation-ui.js';
 
 export async function handleCultivationButton(interaction: ButtonInteraction, service: BreakthroughService,
@@ -41,24 +42,62 @@ export async function handleCultivationButton(interaction: ButtonInteraction, se
   throw new CultivationError('Nút Thiên Kiếp không được hỗ trợ.');
 }
 
-export async function handleCultivationModal(interaction: ModalSubmitInteraction, service: BreakthroughService) {
+export async function handleCultivationModal(
+  interaction: ModalSubmitInteraction, service: BreakthroughService, roleSync: DiscordRoleSync,
+) {
   const [, action, id, rawIndex] = interaction.customId.split(':');
   const index = Number(rawIndex);
   if (action !== 'submit' || !interaction.guildId || !id || !interaction.message || !Number.isSafeInteger(index)) throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
   const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
+  await interaction.deferUpdate();
   if (value.currentIndex !== index) {
-    await interaction.reply({ content: 'Câu này đã được trả lời hoặc phiên đã chuyển sang câu khác.', flags: MessageFlags.Ephemeral });
+    await refreshBreakthroughMessage(interaction, value, index, service, roleSync);
     return;
   }
-  await interaction.deferUpdate();
   try {
     const updated = await service.answer(value, interaction.fields.getTextInputValue('answer'));
     await interaction.editReply(buildBreakthroughAnswered(updated));
   } catch (error) {
     if (!(error instanceof CultivationError)) throw error;
+    const latest = await service.getOwned(id, interaction.guildId, interaction.user.id);
+    await refreshBreakthroughMessage(interaction, latest, index, service, roleSync);
+  }
+}
+
+async function refreshBreakthroughMessage(
+  interaction: ModalSubmitInteraction,
+  attempt: Awaited<ReturnType<BreakthroughService['getOwned']>>,
+  submittedIndex: number,
+  service: BreakthroughService,
+  roleSync: DiscordRoleSync,
+): Promise<void> {
+  if (attempt.status === 'active') {
+    if (attempt.currentIndex === submittedIndex && typeof attempt.questions[submittedIndex]?.answer === 'string') {
+      await interaction.editReply(buildBreakthroughAnswered(attempt));
+      await interaction.followUp({
+        content: 'Câu trả lời đã được ghi nhận trước đó; không chấm lặp lần nữa.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const audio = await service.replay(attempt);
+    await interaction.editReply(buildBreakthroughQuestion(attempt, audio));
     await interaction.followUp({
-      content: 'Câu này đã được trả lời hoặc giao diện đã cũ. Hãy tiếp tục từ bảng Thiên Kiếp hiện tại.',
+      content: `Phiên đã chuyển sang câu ${attempt.currentIndex + 1}/10; giao diện đã được đồng bộ.`,
       flags: MessageFlags.Ephemeral,
     });
+    return;
   }
+
+  const result = buildBreakthroughResult(attempt, REALMS[attempt.toMajor]!);
+  if (attempt.status === 'passed' && interaction.guild) {
+    const sync = await roleSync.sync(interaction.guild, interaction.user.id, attempt.toMajor);
+    result.content = `${sync.synced ? '✅' : '⚠️'} ${sync.message}`;
+  }
+  await interaction.editReply(result);
+  await interaction.followUp({
+    content: 'Thiên Kiếp này đã kết thúc; kết quả hiện tại đã được hiển thị.',
+    flags: MessageFlags.Ephemeral,
+  });
 }

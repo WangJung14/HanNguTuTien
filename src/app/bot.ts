@@ -80,7 +80,7 @@ export function buildBot(
         return;
       }
       if (interaction.isModalSubmit() && interaction.customId.startsWith('cultivation:')) {
-        await handleCultivationModal(interaction, cultivation.breakthrough);
+        await handleCultivationModal(interaction, cultivation.breakthrough, cultivation.roleSync);
         return;
       }
       if (interaction.isModalSubmit() && interaction.customId.startsWith('xpadmin:')) {
