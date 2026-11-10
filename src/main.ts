@@ -17,10 +17,13 @@ import{MountainMatchService,MountainQuestionService,MountainScheduler,PostgresMo
 import{PostgresPveRepository,PveScheduler,PveService,QuestionPackService,SqlitePveRepository}from'./modules/pve/index.js';
 import { openPostgres } from './scripts/postgres-common.js';
 import { closeHealthServer, startHealthServer } from './shared/http/health-server.js';
+import { assertPostgresReady } from './shared/database/postgres-readiness.js';
+import { CultivationLeaderboardScheduler, CultivationLeaderboardService, PostgresSectRepository, SectContributionService, SectService, SqliteSectRepository } from './modules/sects/index.js';
 
 const config = getDiscordConfig();
 const databaseProvider = getDatabaseProvider();
 const postgresConnection = databaseProvider === 'postgres' ? openPostgres('runtime') : null;
+if (postgresConnection) await assertPostgresReady(postgresConnection);
 const dictionaryConnection = openDictionary();
 const dictionaryRepository = new SqliteDictionaryRepository(dictionaryConnection.db, dictionaryConnection.sqlite);
 const dictionaryService = new DictionaryService(dictionaryRepository);
@@ -42,8 +45,14 @@ const cultivationRepository = postgresConnection
   ? new PostgresCultivationRepository(postgresConnection)
   : new SqliteCultivationRepository(progressConnection!.sqlite);
 const realmService = new RealmService(cultivationRepository);
+const sectRepository=postgresConnection?new PostgresSectRepository(postgresConnection):new SqliteSectRepository(progressConnection!.sqlite);
+const sectService=new SectService(sectRepository,realmService);
+const sectContributions=new SectContributionService(sectRepository);
+const leaderboardService=new CultivationLeaderboardService(sectRepository);
+const leaderboardScheduler=new CultivationLeaderboardScheduler(leaderboardService);
 let discordClient: Client | null = null;
 const xpService = new XpService(cultivationRepository, async (event: XpAwardEvent) => {
+  await leaderboardService.markDirty(event.guildId);
   const channelId = await cultivationRepository.getXpAnnouncementChannel(event.guildId);
   if (!channelId) return;
   if (!discordClient?.isReady()) throw new Error('Discord client is not ready to send XP announcements.');
@@ -70,7 +79,10 @@ const xpService = new XpService(cultivationRepository, async (event: XpAwardEven
     allowedMentions: { parse: [] },
   });
 });
-const breakthroughService = new BreakthroughService(cultivationRepository, realmService, dictationService);
+const breakthroughService = new BreakthroughService(cultivationRepository, realmService, dictationService, async attempt => {
+  await sectContributions.breakthrough(attempt.guildId, attempt.userId, attempt.id);
+  await leaderboardService.markDirty(attempt.guildId);
+});
 const roleSync = new DiscordRoleSync(cultivationRepository);
 const questService = postgresConnection
   ? new PostgresQuestService(postgresConnection, xpService)
@@ -82,36 +94,38 @@ const mountainRepository = postgresConnection
   ? new PostgresMountainRepository(postgresConnection)
   : new SqliteMountainRepository(progressConnection!.sqlite);
 const mountainQuestionService=new MountainQuestionService(deckService);
-const mountainService=new MountainMatchService(mountainRepository,mountainQuestionService,xpService);
+const mountainService=new MountainMatchService(mountainRepository,mountainQuestionService,xpService,(g,u,id)=>sectContributions.mountain(g,u,id));
 const mountainScheduler=new MountainScheduler(mountainService);
 const pveRepository = postgresConnection
   ? new PostgresPveRepository(postgresConnection)
   : new SqlitePveRepository(progressConnection!.sqlite);
 const questionPacks=new QuestionPackService();
-const pveService=new PveService(pveRepository,questionPacks,xpService);
+const pveService=new PveService(pveRepository,questionPacks,xpService,sectContributions);
 const pveScheduler=new PveScheduler(pveService);
 const learningRewards={
   awardQuestion:async(guildId:string,userId:string,question:Parameters<XpService['awardQuestion']>[2])=>{
-    const award=await xpService.awardQuestion(guildId,userId,question);if(question.isCorrect)await questService.recordCorrectAnswer(guildId,userId);return award;
+    const award=await xpService.awardQuestion(guildId,userId,question);if(question.isCorrect){await questService.recordCorrectAnswer(guildId,userId);await sectContributions.recordCorrect(guildId,userId,`sect-correct:${question.sessionId}:${question.questionIndex}`);}return award;
   },
   awardCompletion:async(guildId:string,userId:string,sessionId:string,questionCount:number,correctCount:number,allFirstTry:boolean)=>{
     const awards=await xpService.awardCompletion(guildId,userId,sessionId,questionCount,correctCount,allFirstTry);
-    await questService.recordCompletedSession(guildId,userId,sessionId,questionCount);return awards;
+    await questService.recordCompletedSession(guildId,userId,sessionId,questionCount);await sectContributions.recordSession(guildId,userId,sessionId,questionCount);return awards;
   },
 };
 const client = buildBot(dictionaryService, bagService, deckService, dictationService, {
   repository: cultivationRepository, realms: realmService, xp: xpService, breakthrough: breakthroughService, roleSync,
-},{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler});
+},{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler},{service:sectService,leaderboard:leaderboardService});
 discordClient = client;
 const stopMeditation=attachMeditationRunner(client,meditationService);
 const healthServer=startHealthServer(client);
 mountainScheduler.start(client);
 pveScheduler.start(client);
+leaderboardScheduler.start(client);
 
 async function shutdown() {
   stopMeditation();
   mountainScheduler.stop();
   pveScheduler.stop();
+  leaderboardScheduler.stop();
   await closeHealthServer(healthServer);
   client.destroy();
   progressConnection?.close();

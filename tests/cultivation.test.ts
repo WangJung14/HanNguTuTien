@@ -159,6 +159,29 @@ describe('Realm progression and breakthrough', () => {
     sqlite.close();
   });
 
+  it('submits the ten-question breakthrough worksheet in two idempotent groups', async () => {
+    const { sqlite, repository, realms } = setup();
+    await repository.addXp('g', 'worksheet-user', 100, 'seed', 'seed-worksheet', null,
+      '2026-11-10', new Date().toISOString(), 999999);
+    const service = new BreakthroughService(repository, realms, fakeDictation());
+    const started = await service.start('g', 'worksheet-user', 1, () => 0);
+    expect(started.audios).toHaveLength(10);
+
+    const firstAnswers = started.attempt.questions.slice(0, 5).map((question) => question.simplified);
+    const afterFirst = await service.submitWorksheetBatch(started.attempt, 0, firstAnswers);
+    expect(afterFirst).toMatchObject({ status: 'active', currentIndex: 5, correctCount: 5 });
+
+    const retried = await service.submitWorksheetBatch(started.attempt, 0, firstAnswers);
+    expect(retried).toMatchObject({ status: 'active', currentIndex: 5, correctCount: 5 });
+
+    const secondAnswers = afterFirst.questions.slice(5).map((question, index) =>
+      index < 3 ? question.simplified : 'sai');
+    const completed = await service.submitWorksheetBatch(afterFirst, 5, secondAnswers);
+    expect(completed).toMatchObject({ status: 'passed', currentIndex: 10, correctCount: 8 });
+    expect((await repository.getOrCreateProfile('g', 'worksheet-user', new Date().toISOString())).majorIndex).toBe(1);
+    sqlite.close();
+  });
+
   it('treats a repeated answer submission as idempotent and keeps the first answer', async () => {
     const { sqlite, repository, realms } = setup();
     await repository.addXp('g', 'u', 100, 'seed', 'seed-idempotent', null, '2026-11-10', new Date().toISOString(), 999999);

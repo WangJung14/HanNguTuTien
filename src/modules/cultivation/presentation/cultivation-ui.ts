@@ -30,6 +30,38 @@ export function buildBreakthroughQuestion(attempt: BreakthroughAttempt, audio?: 
     embeds: [], components: [row], attachments: [], files: audio ? [new AttachmentBuilder(audio.data, { name: `thien-kiep.${audio.format}` })] : [] };
 }
 
+export function buildBreakthroughWorksheet(attempt: BreakthroughAttempt, audios?: SynthesizedAudio[]) {
+  const batchStart = attempt.currentIndex < 5 ? 0 : 5;
+  const batchEnd = Math.min(batchStart + 5, attempt.questions.length);
+  const rows = attempt.questions.map((_, index) => {
+    const state = index < attempt.currentIndex ? '✅ Đã ghi nhận' : index < batchStart ? '⏳ Chờ' : '✍️ Chưa trả lời';
+    return `**${index + 1}.** Nghe tệp \`thien-kiep-${String(index + 1).padStart(2, '0')}\` — ${state}`;
+  });
+  const button = new ButtonBuilder()
+    .setCustomId(`cultivation:sheet:${attempt.id}:${batchStart}`)
+    .setLabel(`Trả lời câu ${batchStart + 1}–${batchEnd}`)
+    .setEmoji('📝')
+    .setStyle(ButtonStyle.Primary);
+  const payload: {
+    content: string; embeds: never[]; components: ActionRowBuilder<ButtonBuilder>[];
+    files?: AttachmentBuilder[];
+  } = {
+    content: [
+      '⚡ **PHIẾU THIÊN KIẾP — 10 CÂU** · Cần đạt ít nhất 8/10',
+      'Nghe đủ 10 tệp âm thanh. Discord giới hạn 5 ô mỗi phiếu nhập, nên hãy nộp lần lượt câu 1–5 rồi 6–10.',
+      '', ...rows,
+    ].join('\n'),
+    embeds: [],
+    components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button)],
+  };
+  if (audios) {
+    payload.files = audios.map((audio, index) => new AttachmentBuilder(audio.data, {
+      name: `thien-kiep-${String(index + 1).padStart(2, '0')}.${audio.format}`,
+    }));
+  }
+  return payload;
+}
+
 export function buildBreakthroughAnswered(attempt: BreakthroughAttempt) {
   const question = attempt.questions[attempt.currentIndex]!;
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -42,12 +74,16 @@ export function buildBreakthroughAnswered(attempt: BreakthroughAttempt) {
 
 export function buildBreakthroughResult(attempt: BreakthroughAttempt, realm: MajorRealm) {
   const passed = attempt.status === 'passed';
+  const review = attempt.questions.map((question, index) =>
+    `${question.correct ? '✅' : '❌'} **${index + 1}. ${escapeMarkdown(question.simplified)}** · ${escapeMarkdown(question.pinyin)}${question.correct ? '' : ` · Bạn viết: ${escapeMarkdown(question.answer || '(trống)')}`}`,
+  ).join('\n');
   return { content: '', components: [], attachments: [], files: [], embeds: [new EmbedBuilder()
     .setColor(passed ? realm.color : 0x7f8c8d)
     .setTitle(passed ? '🌩️ Đột phá thành công!' : '☁️ Đột phá thất bại')
     .setDescription(passed
       ? `Đạt **${attempt.correctCount}/10**. Thiên môn khai mở, đạo hữu tiến vào **${realm.name}**!`
-      : `Đạt **${attempt.correctCount}/10**, cần ít nhất 8 câu đúng. Không mất XP; có thể thử lại sau cooldown.`)] };
+      : `Đạt **${attempt.correctCount}/10**, cần ít nhất 8 câu đúng. Không mất XP; có thể thử lại sau cooldown.`)
+    .addFields({ name: 'Đối chiếu phiếu', value: review.slice(0, 1024) })] };
 }
 
 export function buildHistoryEmbed(ledger: XpLedgerEntry[], attempts: BreakthroughAttempt[]) {

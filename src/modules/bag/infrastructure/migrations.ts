@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 /** Migration v1 chỉ tác động tới progress.sqlite, KHÔNG bao giờ tới CVDICT. */
 export function applyProgressMigrations(sqlite: Database.Database): void {
   const version = sqlite.pragma('user_version', { simple: true }) as number;
-  if (version > 8) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 9) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version === 0) {
     sqlite.transaction(() => {
       sqlite.exec(`

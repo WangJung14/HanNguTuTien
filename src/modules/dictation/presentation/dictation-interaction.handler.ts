@@ -8,7 +8,7 @@ import type { DictationQuestion } from '../domain/dictation.types.js';
 import { DictationAudioError, DictationError } from '../domain/dictation.types.js';
 import {
   buildAnsweredMessage, buildCountSelect, buildPaperQuestionMessage, buildPaperSummary,
-  buildQuestionMessage, buildReadAnswers, buildSummary,
+  buildQuestionMessage, buildReadAnswers, buildSummary, buildWorksheetMessage,
 } from './dictation-ui.js';
 
 type DictationRewardSink = {
@@ -57,11 +57,13 @@ export async function handleDictationSelect(
     return;
   }
   if (!interaction.channelId) throw new DictationError('Không xác định được kênh để lưu phiên khảo bài.');
-  const { session, question, audio } = await service.start(
+  const { session, question, audio, worksheet } = await service.start(
     interaction.guildId, interaction.user.id, deckId, value, interaction.channelId,
     Math.random, rawMode === 'paper' ? 'paper' : 'discord',
   );
-  const response = await interaction.editReply(buildQuestionMessage(session, question, audio));
+  const response = await interaction.editReply(session.mode === 'discord' && worksheet
+    ? buildWorksheetMessage(session, worksheet, true)
+    : buildQuestionMessage(session, question, audio));
   await service.bindMessage(session.id, response.id);
 }
 
@@ -80,6 +82,24 @@ export async function handleDictationButton(
     sessionId, interaction.guildId, interaction.user.id, interaction.message.id,
   );
   const question = await service.getCurrentQuestion(session, questionIndex);
+
+  if (action === 'sheet') {
+    if (session.mode === 'paper') throw new DictationError('Chế độ viết giấy không dùng phiếu trả lời Discord.');
+    if (questionIndex !== session.currentIndex || questionIndex % 5 !== 0) {
+      throw new DictationError('Nhóm câu này đã được nộp hoặc chưa đến lượt.');
+    }
+    const end = Math.min(questionIndex + 5, Math.floor(questionIndex / 10) * 10 + 10, session.questionCount);
+    const modal = new ModalBuilder()
+      .setCustomId(`dictation:sheet-submit:${session.id}:${questionIndex}`)
+      .setTitle(`Phiếu khảo bài ${questionIndex + 1}–${end}`);
+    for (let index = questionIndex; index < end; index += 1) {
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder()
+        .setCustomId(`answer-${index}`).setLabel(`Câu ${index + 1}: chữ Hán vừa nghe`)
+        .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100)));
+    }
+    await interaction.showModal(modal);
+    return;
+  }
 
   if (action === 'reveal') {
     if (session.mode !== 'paper') throw new DictationError('Nút này chỉ dùng trong chế độ viết giấy.');
@@ -166,7 +186,7 @@ export async function handleDictationModal(
 ): Promise<void> {
   const [, action, sessionId, rawIndex] = interaction.customId.split(':');
   const questionIndex = Number(rawIndex);
-  if (action !== 'submit' || !interaction.guildId || !sessionId ||
+  if (!interaction.guildId || !sessionId ||
       !Number.isSafeInteger(questionIndex) || questionIndex < 0 || !interaction.message) {
     await interaction.reply({ content: 'Form trả lời không hợp lệ hoặc đã hết hạn.', flags: MessageFlags.Ephemeral });
     return;
@@ -178,6 +198,26 @@ export async function handleDictationModal(
     throw new DictationError('Chế độ viết giấy không nhận đáp án trên Discord.');
   }
   await interaction.deferUpdate();
+  if (action === 'sheet-submit') {
+    const end = Math.min(questionIndex + 5, Math.floor(questionIndex / 10) * 10 + 10, session.questionCount);
+    const answers = Array.from({ length: end - questionIndex }, (_, offset) =>
+      interaction.fields.getTextInputValue(`answer-${questionIndex + offset}`));
+    const submitted = await service.submitWorksheetBatch(session, questionIndex, answers);
+    for (const answered of submitted.answered) await xp?.awardQuestion(session.guildId, session.userId, answered);
+    if (submitted.session.status === 'completed') {
+      const results = await service.getResults(session.id);
+      if (xp) await xp.awardCompletion(session.guildId, session.userId, session.id, session.questionCount,
+        results.filter((item) => item.isCorrect).length,
+        results.every((item) => item.isCorrect && !item.usedHint && item.replayCount === 0));
+      await interaction.editReply(buildSummary(submitted.session, results));
+      return;
+    }
+    const needsNewAudio = submitted.session.currentIndex % 10 === 0;
+    const worksheet = await service.prepareWorksheet(submitted.session, needsNewAudio);
+    await interaction.editReply(buildWorksheetMessage(submitted.session, worksheet, needsNewAudio));
+    return;
+  }
+  if (action !== 'submit') throw new DictationError('Form trả lời không hợp lệ hoặc đã hết hạn.');
   const answer = interaction.fields.getTextInputValue('answer');
   const result = await service.submitAnswer(session, questionIndex, answer);
   await xp?.awardQuestion(session.guildId, session.userId, result);

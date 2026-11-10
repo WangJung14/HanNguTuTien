@@ -6,7 +6,7 @@ import type { BreakthroughService } from '../application/breakthrough.service.js
 import type { DiscordRoleSync } from '../infrastructure/discord-role-sync.js';
 import { CultivationError } from '../domain/cultivation.types.js';
 import { REALMS } from '../domain/cultivation.config.js';
-import { buildBreakthroughAnswered, buildBreakthroughQuestion, buildBreakthroughResult } from './cultivation-ui.js';
+import { buildBreakthroughAnswered, buildBreakthroughQuestion, buildBreakthroughResult, buildBreakthroughWorksheet } from './cultivation-ui.js';
 
 export async function handleCultivationButton(interaction: ButtonInteraction, service: BreakthroughService,
   roleSync: DiscordRoleSync) {
@@ -14,6 +14,24 @@ export async function handleCultivationButton(interaction: ButtonInteraction, se
   const index = Number(rawIndex);
   if (!interaction.guildId || !id || !Number.isSafeInteger(index)) throw new CultivationError('Nút Thiên Kiếp không hợp lệ.');
   const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
+  if (action === 'sheet') {
+    const batchStart = index;
+    if (batchStart !== 0 && batchStart !== 5) throw new CultivationError('Nhóm câu Thiên Kiếp không hợp lệ.');
+    if (value.currentIndex < batchStart || value.currentIndex >= batchStart + 5) {
+      throw new CultivationError('Phiếu này đã được nộp hoặc chưa đến lượt.');
+    }
+    const modal = new ModalBuilder()
+      .setCustomId(`cultivation:sheet-submit:${id}:${batchStart}`)
+      .setTitle(`Phiếu Thiên Kiếp ${batchStart + 1}–${Math.min(batchStart + 5, value.questions.length)}`);
+    for (let questionIndex = batchStart; questionIndex < Math.min(batchStart + 5, value.questions.length); questionIndex += 1) {
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(new TextInputBuilder()
+        .setCustomId(`answer-${questionIndex}`)
+        .setLabel(`Câu ${questionIndex + 1}: chữ Hán vừa nghe`)
+        .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(100)));
+    }
+    await interaction.showModal(modal);
+    return;
+  }
   if (value.currentIndex !== index) throw new CultivationError('Câu Thiên Kiếp này đã cũ.');
   if (action === 'answer') {
     const modal = new ModalBuilder().setCustomId(`cultivation:submit:${id}:${index}`).setTitle(`Thiên Kiếp ${index + 1}/10`)
@@ -47,9 +65,27 @@ export async function handleCultivationModal(
 ) {
   const [, action, id, rawIndex] = interaction.customId.split(':');
   const index = Number(rawIndex);
-  if (action !== 'submit' || !interaction.guildId || !id || !interaction.message || !Number.isSafeInteger(index)) throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
+  if (!interaction.guildId || !id || !interaction.message || !Number.isSafeInteger(index)) throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
   const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
   await interaction.deferUpdate();
+  if (action === 'sheet-submit') {
+    const end = Math.min(index + 5, value.questions.length);
+    const answers = Array.from({ length: end - index }, (_, offset) =>
+      interaction.fields.getTextInputValue(`answer-${index + offset}`));
+    const updated = await service.submitWorksheetBatch(value, index, answers);
+    if (updated.status === 'active') {
+      await interaction.editReply(buildBreakthroughWorksheet(updated));
+      return;
+    }
+    const result = buildBreakthroughResult(updated, REALMS[updated.toMajor]!);
+    if (updated.status === 'passed' && interaction.guild) {
+      const sync = await roleSync.sync(interaction.guild, interaction.user.id, updated.toMajor);
+      result.content = `${sync.synced ? '✅' : '⚠️'} ${sync.message}`;
+    }
+    await interaction.editReply(result);
+    return;
+  }
+  if (action !== 'submit') throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
   if (value.currentIndex !== index) {
     await refreshBreakthroughMessage(interaction, value, index, service, roleSync);
     return;

@@ -8,6 +8,7 @@ import { canhgioiroleDefinition, dotphaDefinition, lichsutuviDefinition, tuviDef
 import { bequanDefinition,bequancauhinhDefinition,diemdanhDefinition,nhiemvuDefinition } from '../modules/quests/index.js';
 import {leonuiDefinition} from '../modules/mountain/index.js';
 import{bicanhDefinition,bossDefinition}from'../modules/pve/index.js';
+import{bangxeptuviDefinition,tongmonDefinition}from'../modules/sects/index.js';
 
 export const pingDefinition = new SlashCommandBuilder()
   .setName('ping').setDescription('Kiểm tra bot còn hoạt động hay không');
@@ -20,4 +21,5 @@ export const commandDefinitions = [
   nhiemvuDefinition,bequanDefinition,diemdanhDefinition,bequancauhinhDefinition,
   leonuiDefinition,
   bicanhDefinition,bossDefinition,
+  tongmonDefinition,bangxeptuviDefinition,
 ];

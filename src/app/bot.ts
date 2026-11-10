@@ -17,6 +17,7 @@ import { handleBequan,handleBequanConfig,handleDiemdanh,handleNhiemvu,type Quest
 import type { MeditationService } from '../modules/meditation/index.js';
 import{handleLeonui,handleMountainButton,MountainError,type MountainMatchService,type MountainScheduler}from'../modules/mountain/index.js';
 import{handleBicanh,handleBoss,handlePveButton,PveError,type PveScheduler,type PveService}from'../modules/pve/index.js';
+import{handleBangxeptuvi,handleTongmon,SectError,type CultivationLeaderboardService,type SectService}from'../modules/sects/index.js';
 
 type CultivationDependencies = { repository: CultivationRepository; realms: RealmService; xp: XpService;
   breakthrough: BreakthroughService; roleSync: DiscordRoleSync };
@@ -26,6 +27,7 @@ type Phase41Dependencies={quests:Pick<QuestService,'recordSavedWord'|'recordCorr
 }};
 type MountainDependencies={service:MountainMatchService;scheduler:MountainScheduler};
 type PveDependencies={service:PveService;scheduler:PveScheduler};
+type SectDependencies={service:SectService;leaderboard:CultivationLeaderboardService};
 
 export function buildBot(
   dictionaryService: DictionaryService,
@@ -36,6 +38,7 @@ export function buildBot(
   phase41:Phase41Dependencies,
   mountain:MountainDependencies,
   pve:PveDependencies,
+  sects:SectDependencies,
 ) {
   const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits.GuildVoiceStates] });
 
@@ -125,11 +128,13 @@ export function buildBot(
         case 'leonui':await handleLeonui(interaction,mountain.service,mountain.scheduler);break;
         case 'bicanh':await handleBicanh(interaction,pve.service,pve.scheduler);break;
         case 'boss':await handleBoss(interaction,pve.service);break;
+        case 'tongmon':await handleTongmon(interaction,sects.service);break;
+        case 'bangxeptuvi':await handleBangxeptuvi(interaction,sects.leaderboard);break;
       }
     } catch (error) {
       console.error('Discord interaction failed:', error);
       if (!interaction.isRepliable()) return;
-      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError
+      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError || error instanceof SectError
         ? `⚠️ ${error.message}` : 'Sư phụ gặp lỗi khi xử lý. Hãy thử lại sau.';
       try {
         if (interaction.deferred || interaction.replied) {

@@ -7,7 +7,7 @@ import type { BreakthroughService } from '../application/breakthrough.service.js
 import type { RealmService } from '../application/realm.service.js';
 import type { XpService } from '../application/xp.service.js';
 import type { DiscordRoleSync } from '../infrastructure/discord-role-sync.js';
-import { buildBreakthroughQuestion, buildHistoryEmbed, buildProfileEmbed } from './cultivation-ui.js';
+import { buildBreakthroughWorksheet, buildHistoryEmbed, buildProfileEmbed } from './cultivation-ui.js';
 
 export const tuviDefinition = new SlashCommandBuilder().setName('tuvi').setDescription('🌀 Xem tu vi và cảnh giới hiện tại');
 export const xpkenhDefinition = new SlashCommandBuilder().setName('xpkenh')
@@ -71,7 +71,7 @@ export async function handleDotpha(interaction: ChatInputCommandInteraction, ser
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const started = await service.start(interaction.guildId, interaction.user.id, interaction.options.getInteger('botu', true));
-  const response = await interaction.editReply(buildBreakthroughQuestion(started.attempt, started.audio));
+  const response = await interaction.editReply(buildBreakthroughWorksheet(started.attempt, started.audios));
   await service.bindMessage(started.attempt.id, response.id);
 }
 export async function handleRealmRole(interaction: ChatInputCommandInteraction, repository: CultivationRepository,

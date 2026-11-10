@@ -4,6 +4,7 @@ import {
 } from 'discord.js';
 import type { DictationQuestion, DictationSession } from '../domain/dictation.types.js';
 import type { SynthesizedAudio } from '../domain/dictation.types.js';
+import type { DictationWorksheet } from '../application/dictation.service.js';
 
 export function buildDeckSelect(
   userId: string,
@@ -76,6 +77,48 @@ export function buildQuestionMessage(
     attachments: [],
     files: audio ? [new AttachmentBuilder(audio.data, { name: `khaobai.${audio.format}` })] : [],
   };
+}
+
+export function buildWorksheetMessage(
+  session: DictationSession,
+  worksheet: DictationWorksheet,
+  includeAudio = false,
+) {
+  const halfStart = session.currentIndex < worksheet.batchStart + 5
+    ? worksheet.batchStart : worksheet.batchStart + 5;
+  const halfEnd = Math.min(halfStart + 5, worksheet.batchEnd);
+  const lines = worksheet.questions.map((question) => {
+    const state = question.questionIndex < session.currentIndex ? '✅ Đã ghi nhận' : '✍️ Chưa trả lời';
+    return `**${question.questionIndex + 1}.** Nghe tệp \`khaobai-${String(question.questionIndex + 1).padStart(2, '0')}\` — ${state}`;
+  });
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`dictation:sheet:${session.id}:${halfStart}`)
+      .setLabel(`Trả lời câu ${halfStart + 1}–${halfEnd}`)
+      .setEmoji('📝').setStyle(ButtonStyle.Primary),
+  );
+  const payload: {
+    content: string; embeds: never[]; components: ActionRowBuilder<ButtonBuilder>[];
+    attachments?: never[]; files?: AttachmentBuilder[];
+  } = {
+    content: [
+      `🎧 **PHIẾU KHẢO BÀI ${worksheet.batchStart + 1}–${worksheet.batchEnd}/${session.questionCount}** · Bộ **${escapeMarkdown(session.deckName).slice(0, 100)}**`,
+      'Nghe các tệp trong nhóm. Discord cho tối đa 5 ô nhập, vì vậy hãy nộp lần lượt từng nửa phiếu.',
+      'Đúng/sai chỉ được công bố sau khi hoàn thành toàn bộ phiên.',
+      '', ...lines,
+    ].join('\n'),
+    embeds: [], components: [row],
+  };
+  if (includeAudio) {
+    payload.attachments = [];
+    payload.files = worksheet.audios.map((audio, index) => {
+      const questionIndex = worksheet.batchStart + index;
+      return new AttachmentBuilder(audio.data, {
+        name: `khaobai-${String(questionIndex + 1).padStart(2, '0')}.${audio.format}`,
+      });
+    });
+  }
+  return payload;
 }
 
 export function buildPaperQuestionMessage(
@@ -162,7 +205,7 @@ export function buildSummary(session: DictationSession, questions: DictationQues
       `Đúng: **${correct}** · Sai: **${incorrect}** · Chính xác: **${accuracy}%**`,
       `Tổng số câu: **${questions.length}**`,
     ].join('\n'))
-    .setFooter({ text: 'Kết quả được lưu trong progress.sqlite. Chưa có hệ thống XP.' });
+    .setFooter({ text: 'Kết quả được lưu bền vững và dùng cho hệ thống XP tu vi.' });
   if (review.length) {
     for (let index = 0; index < review.length; index += 8) {
       const batch = review.slice(index, index + 8);

@@ -6,11 +6,11 @@
 - PostgreSQL schema cần migration v3 để thêm cấu hình kênh XP và nhật ký thưởng/phạt tu vi; migration bật RLS cho các bảng mới.
 - Dữ liệu `progress.sqlite` đã import và verify theo số bản ghi, tổng XP, profile XP và reward key.
 - SQLite gốc không bị chỉnh sửa/xóa.
-- Có scripts migrate, import, verify, backup và rollback.
+- Có scripts migrate, import, verify, audit, backup và rollback.
 - `/health` bind `0.0.0.0:$PORT`, không truy vấn DB và không trả secret.
 - `render.yaml` khai báo đúng một Free Web Service.
 
-Runtime hiện đã có PostgreSQL adapters cho Bag, Deck, Dictation, Cultivation/XP, Quest, Meditation, Mountain và PvE; Dictionary tiếp tục đọc `data/cvdict-app.sqlite` ở chế độ chỉ đọc. `DATABASE_PROVIDER=postgres` được chọn trong `render.yaml`, không fallback sang SQLite nếu PostgreSQL lỗi.
+Runtime hiện đã có PostgreSQL adapters cho Bag, Deck, Dictation, Cultivation/XP, Quest, Meditation, Mountain và PvE; Dictionary tiếp tục đọc `data/cvdict-app.sqlite` ở chế độ chỉ đọc. `DATABASE_PROVIDER=postgres` được chọn trong `render.yaml`, không fallback sang SQLite nếu PostgreSQL lỗi. Khi khởi động, bot kiểm tra migration và các bảng runtime bắt buộc trước khi login Discord.
 
 **Trước khi deploy bản có `/xpkenh` và `/xpadmin`, hãy chạy `npm.cmd run db:pg:migrate` từ máy quản trị để thêm các bảng mới vào Supabase.** Migration dùng `CREATE TABLE IF NOT EXISTS`, không xóa dữ liệu hiện có. Bộ test, typecheck và build chạy cục bộ; chưa có kiểm thử tích hợp PostgreSQL trong phiên này.
 
@@ -22,8 +22,13 @@ Các lệnh migration/import/verify/backup/rollback chạy thủ công từ máy
 npm.cmd run db:pg:migrate
 npm.cmd run db:pg:import
 npm.cmd run db:pg:verify
+npm.cmd run db:pg:audit
 npm.cmd run db:pg:backup
 ```
+
+`db:pg:verify` chỉ dùng ngay sau initial import/cutover, khi SQLite và PostgreSQL phải giống nhau chính xác. Sau khi production đã ghi dữ liệu mới, dùng `db:pg:audit`; PostgreSQL có nhiều bản ghi hoặc XP hơn SQLite local là bình thường.
+
+> Không chạy `RESET_TARGET_BEFORE_IMPORT=true` trên database đã có dữ liệu production. Chế độ này truncate toàn bộ bảng bot và chỉ dành cho cutover lần đầu khi đã dừng mọi writer, có backup và đã xác nhận SQLite là nguồn mới nhất.
 
 Import mặc định từ chối target đã có dữ liệu. Chỉ dùng `ALLOW_NONEMPTY_IMPORT=true` cho retry idempotent có chủ ý.
 

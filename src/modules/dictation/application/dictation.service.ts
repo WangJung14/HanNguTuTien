@@ -15,6 +15,9 @@ import {
 } from '../domain/dictation.types.js';
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+export type DictationWorksheet = {
+  batchStart: number; batchEnd: number; questions: DictationQuestion[]; audios: SynthesizedAudio[];
+};
 
 export class DictationService {
   constructor(
@@ -56,7 +59,7 @@ export class DictationService {
     channelId: string,
     random: () => number = Math.random,
     mode: DictationMode = 'discord',
-  ): Promise<{ session: DictationSession; question: DictationQuestion; audio: SynthesizedAudio }> {
+  ) {
     if (await this.getActiveSession(guildId, userId)) {
       throw new DictationError('Bạn đang có một phiên khảo bài trong server này. Dùng `/khaobai tieptuc` để mở lại.');
     }
@@ -67,7 +70,9 @@ export class DictationService {
       throw new DictationError(`Bộ này chỉ có ${candidates.length} từ đủ điều kiện; hãy chọn số câu nhỏ hơn.`);
     }
     const questions = chooseQuestions(candidates, count, random);
-    const firstAudio = await this.audio.synthesize(questions[0]!.simplified, 'normal');
+    const initialAudios = mode === 'paper'
+      ? [await this.audio.synthesize(questions[0]!.simplified, 'normal')]
+      : await this.synthesizeBatch(questions.slice(0, Math.min(10, questions.length)));
     const now = nowIso();
     let session: DictationSession;
     try {
@@ -90,19 +95,58 @@ export class DictationService {
     }
     const question = await this.repository.findQuestion(session.id, 0);
     if (!question) throw new Error('First dictation question could not be found.');
-    return { session, question, audio: firstAudio };
+    const worksheet = mode === 'discord'
+      ? { batchStart: 0, batchEnd: Math.min(10, questions.length),
+        questions: (await this.repository.findQuestions(session.id)).slice(0, Math.min(10, questions.length)), audios: initialAudios }
+      : undefined;
+    return { session, question, audio: initialAudios[0]!, worksheet };
   }
 
   async resume(
     guildId: string,
     userId: string,
-  ): Promise<{ session: DictationSession; question: DictationQuestion; audio: SynthesizedAudio | null }> {
+  ) {
     const session = await this.getActiveSession(guildId, userId);
     if (!session) throw new DictationError('Bạn không có phiên khảo bài đang hoạt động trong server này.');
     const question = await this.repository.findQuestion(session.id, session.currentIndex);
     if (!question) throw new Error('Current dictation question could not be found.');
+    if (session.mode === 'discord') {
+      const worksheet = await this.prepareWorksheet(session);
+      return { session, question, audio: worksheet.audios[session.currentIndex - worksheet.batchStart] ?? null, worksheet };
+    }
     const audio = question.answeredAt ? null : await this.audio.synthesize(question.simplified, 'normal');
-    return { session, question, audio };
+    return { session, question, audio, worksheet: undefined };
+  }
+
+  async prepareWorksheet(session: DictationSession, includeAudio = true): Promise<DictationWorksheet> {
+    if (session.mode !== 'discord') throw new DictationError('Chế độ viết giấy không dùng phiếu trả lời Discord.');
+    const batchStart = Math.floor(session.currentIndex / 10) * 10;
+    const batchEnd = Math.min(batchStart + 10, session.questionCount);
+    const all = await this.repository.findQuestions(session.id);
+    const questions = all.slice(batchStart, batchEnd);
+    return { batchStart, batchEnd, questions, audios: includeAudio ? await this.synthesizeBatch(questions) : [] };
+  }
+
+  async submitWorksheetBatch(session: DictationSession, formStart: number, answers: string[]) {
+    if (session.mode !== 'discord') throw new DictationError('Chế độ viết giấy không nhận phiếu trả lời Discord.');
+    const groupEnd = Math.min(formStart + 5, Math.floor(formStart / 10) * 10 + 10, session.questionCount);
+    if (formStart % 5 !== 0 || answers.length !== groupEnd - formStart || answers.some((answer) => !answer.trim())) {
+      throw new DictationError('Hãy trả lời đầy đủ các câu trong phiếu trước khi nộp.');
+    }
+    let current = await this.repository.findSession(session.id);
+    if (!current) throw new DictationError('Không tìm thấy phiên khảo bài.');
+    if (current.status !== 'active' || current.currentIndex >= groupEnd) {
+      return { session: current, answered: [] as DictationQuestion[] };
+    }
+    if (current.currentIndex < formStart) throw new DictationError('Hãy hoàn thành nhóm câu trước trước khi nộp nhóm này.');
+    const answered: DictationQuestion[] = [];
+    while (current.status === 'active' && current.currentIndex < groupEnd) {
+      const index = current.currentIndex;
+      const result = await this.submitAnswer(current, index, answers[index - formStart]!);
+      answered.push(result);
+      current = await this.advanceWithoutAudio(current, index);
+    }
+    return { session: current, answered };
   }
 
   async bindMessage(sessionId: string, messageId: string): Promise<void> {
@@ -211,6 +255,21 @@ export class DictationService {
 
   async getReadQuestions(session: DictationSession): Promise<DictationQuestion[]> {
     return (await this.repository.findQuestions(session.id)).slice(0, session.currentIndex + 1);
+  }
+
+  private async advanceWithoutAudio(session: DictationSession, questionIndex: number) {
+    const now = nowIso();
+    const updated = await this.repository.advance(session.id, questionIndex, now, expiresAt(now));
+    if (updated) return updated;
+    const latest = await this.repository.findSession(session.id);
+    if (latest && (latest.currentIndex > questionIndex || latest.status !== 'active')) return latest;
+    throw new DictationError('Không thể chuyển câu trong phiếu; dữ liệu vừa được thay đổi.');
+  }
+
+  private async synthesizeBatch(questions: Pick<DictationQuestion, 'simplified'>[]) {
+    const audios: SynthesizedAudio[] = [];
+    for (const question of questions) audios.push(await this.audio.synthesize(question.simplified, 'normal'));
+    return audios;
   }
 
   private async loadDeckCandidates(guildId: string, userId: string, deckId: number) {

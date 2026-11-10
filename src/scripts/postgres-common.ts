@@ -24,4 +24,6 @@ export const progressTables = [
   'breakthrough_attempts','guild_realm_roles','xp_announcement_channels','xp_admin_adjustments','meditation_config','meditation_sessions','meditation_rewards',
   'daily_quest_progress','daily_quest_entries','learning_streaks','learning_activity_days','mountain_matches',
   'mountain_players','mountain_rounds','mountain_answers','pve_runs','pve_players','pve_rounds','pve_answers',
+  'sects','sect_members','sect_join_requests','sect_contribution_ledger','sect_contribution_claims','sect_quests',
+  'sect_quest_progress','sect_quest_events','guild_cultivation_leaderboard_config',
 ] as const;

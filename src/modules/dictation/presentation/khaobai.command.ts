@@ -2,7 +2,7 @@ import {
   ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder,
 } from 'discord.js';
 import type { DictationService } from '../application/dictation.service.js';
-import { buildAnsweredMessage, buildDeckSelect, buildQuestionMessage } from './dictation-ui.js';
+import { buildAnsweredMessage, buildDeckSelect, buildQuestionMessage, buildWorksheetMessage } from './dictation-ui.js';
 
 export const khaobaiDefinition = new SlashCommandBuilder()
   .setName('khaobai')
@@ -23,9 +23,11 @@ export async function handleKhaobai(
 
   if (interaction.options.getSubcommand() === 'tieptuc') {
     const resumed = await service.resume(interaction.guildId, interaction.user.id);
-    const response = resumed.question.answeredAt
-      ? await interaction.editReply(buildAnsweredMessage(resumed.session, resumed.question))
-      : await interaction.editReply(buildQuestionMessage(resumed.session, resumed.question, resumed.audio ?? undefined));
+    const response = resumed.session.mode === 'discord' && resumed.worksheet
+      ? await interaction.editReply(buildWorksheetMessage(resumed.session, resumed.worksheet, true))
+      : resumed.question.answeredAt
+        ? await interaction.editReply(buildAnsweredMessage(resumed.session, resumed.question))
+        : await interaction.editReply(buildQuestionMessage(resumed.session, resumed.question, resumed.audio ?? undefined));
     await service.bindMessage(resumed.session.id, response.id);
     return;
   }

@@ -9,6 +9,7 @@ export class PveService {
     private readonly repo: PveRepository,
     private readonly packs: QuestionPackService,
     private readonly xp: XpService,
+    private readonly contribution?: { secret(guildId:string,userId:string,runId:string,now?:Date):Promise<unknown>; boss(guildId:string,userId:string,runId:string,now?:Date):Promise<unknown> },
   ) {}
 
   async createSecret(guild: string, channel: string, user: string, name: string, level: HskLevel, random: () => number = Math.random) {
@@ -151,6 +152,7 @@ export class PveService {
         `secret:${run.guildId}:${run.ownerId}:${date}`, { sessionId: run.id, now },
       );
       await this.repo.markXp(run.id, run.ownerId, award.awarded);
+      await this.contribution?.secret(run.guildId, run.ownerId, run.id, now);
       return;
     }
     if (run.kind === 'boss' && run.status === 'COMPLETED') {
@@ -161,6 +163,7 @@ export class PveService {
           `boss:${run.guildId}:${run.weekKey}:${player.userId}`, { sessionId: run.id, now },
         );
         await this.repo.markXp(run.id, player.userId, award.awarded);
+        await this.contribution?.boss(run.guildId, player.userId, run.id, now);
       }
     }
   }

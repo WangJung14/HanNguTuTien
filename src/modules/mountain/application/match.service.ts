@@ -9,6 +9,7 @@ export class MountainMatchService {
     private readonly repo: MountainRepository,
     private readonly questions: MountainQuestionService,
     private readonly xp: XpService,
+    private readonly onCompleted?: (guildId: string, userId: string, matchId: string) => Promise<unknown>,
   ) {}
 
   async create(
@@ -137,6 +138,7 @@ export class MountainMatchService {
         `mountain:${match.id}:${player.userId}`, { sessionId: match.id, now },
       );
       await this.repo.markXp(match.id, player.userId, award.awarded, date);
+      await this.onCompleted?.(match.guildId, player.userId, match.id);
     }
   }
 }

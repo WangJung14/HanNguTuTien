@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 /** Migration v2: chỉ dùng trên progress.sqlite; không thay đổi CVDICT. */
 export function applyDeckMigrations(sqlite: Database.Database): void {
   const version = sqlite.pragma('user_version', { simple: true }) as number;
-  if (version > 8) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 9) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version < 1) throw new Error('Run Phase 2 migration before Phase 2.1 migration.');
   if (version === 1) {
     sqlite.transaction(() => {

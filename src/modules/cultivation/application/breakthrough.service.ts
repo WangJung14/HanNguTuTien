@@ -6,7 +6,8 @@ import type { RealmService } from './realm.service.js';
 
 export class BreakthroughService {
   constructor(private readonly repository: CultivationRepository, private readonly realms: RealmService,
-    private readonly dictation: DictationService) {}
+    private readonly dictation: DictationService,
+    private readonly onPassed?: (attempt: BreakthroughAttempt) => Promise<void>) {}
 
   listDecks(guildId: string, userId: string) { return this.dictation.listOwnedDecks(guildId, userId); }
 
@@ -16,7 +17,8 @@ export class BreakthroughService {
     if (!progress.needsBreakthrough) throw new CultivationError(`Cần ${progress.nextMajor.minXp} XP để khiêu chiến Thiên Kiếp tiếp theo.`);
     const active = await this.repository.findActiveAttempt(guildId, userId);
     if (active) {
-      return { attempt: active, audio: await this.dictation.synthesizePublic(active.questions[active.currentIndex]!.simplified) };
+      const audios = await this.synthesizeWorksheet(active);
+      return { attempt: active, audio: audios[active.currentIndex]!, audios };
     }
     const failed = await this.repository.latestFailedAttempt(guildId, userId);
     if (failed?.cooldownUntil && failed.cooldownUntil > new Date().toISOString()) {
@@ -25,7 +27,7 @@ export class BreakthroughService {
     const candidates = await this.dictation.getEligibleQuestions(guildId, userId, deckId);
     if (candidates.length < 10) throw new CultivationError(`Bộ từ chỉ có ${candidates.length}/10 từ hợp lệ; cần ít nhất 10 từ để mở Thiên Kiếp.`);
     const questions = this.dictation.choosePublicQuestions(candidates, 10, random).map((q) => ({ ...q, answer: null, correct: null }));
-    const audio = await this.dictation.synthesizePublic(questions[0]!.simplified);
+    const audios = await this.synthesizeQuestions(questions);
     const now = new Date().toISOString();
     const value: BreakthroughAttempt = { id: randomUUID(), guildId, userId,
       fromMajor: progress.profile.majorIndex, toMajor: progress.profile.majorIndex + 1, deckId,
@@ -35,7 +37,34 @@ export class BreakthroughService {
       if (error instanceof Error && /UNIQUE constraint failed/u.test(error.message)) throw new CultivationError('Bạn đang có một Thiên Kiếp chưa hoàn thành.');
       throw error;
     }
-    return { attempt: value, audio };
+    return { attempt: value, audio: audios[0]!, audios };
+  }
+
+  async synthesizeWorksheet(value: BreakthroughAttempt) {
+    if (value.status !== 'active') throw new CultivationError('Thiên Kiếp này đã kết thúc.');
+    return this.synthesizeQuestions(value.questions);
+  }
+
+  async submitWorksheetBatch(value: BreakthroughAttempt, batchStart: number, answers: string[]) {
+    if (value.status !== 'active') throw new CultivationError('Thiên Kiếp này đã kết thúc.');
+    if (batchStart !== 0 && batchStart !== 5) throw new CultivationError('Nhóm câu Thiên Kiếp không hợp lệ.');
+    const batchEnd = Math.min(batchStart + 5, value.questions.length);
+    if (answers.length !== batchEnd - batchStart || answers.some((answer) => !answer.trim())) {
+      throw new CultivationError('Hãy trả lời đầy đủ mọi câu trong phiếu trước khi nộp.');
+    }
+
+    let current = await this.repository.getAttempt(value.id);
+    if (!current) throw new CultivationError('Không tìm thấy Thiên Kiếp của bạn.');
+    if (current.status !== 'active' || current.currentIndex >= batchEnd) return current;
+    if (current.currentIndex < batchStart) throw new CultivationError('Hãy hoàn thành nhóm câu trước trước khi nộp nhóm này.');
+
+    while (current.status === 'active' && current.currentIndex < batchEnd) {
+      const index = current.currentIndex;
+      const answer = answers[index - batchStart]!.trim();
+      const answered = await this.answer(current, answer);
+      current = (await this.advanceWithoutAudio(answered)).attempt;
+    }
+    return current;
   }
 
   async getOwned(id: string, guildId: string, userId: string, messageId?: string): Promise<BreakthroughAttempt> {
@@ -71,7 +100,29 @@ export class BreakthroughService {
     const updated = await this.repository.advanceAttempt(value.id, value.currentIndex, now.toISOString(),
       new Date(now.getTime() + XP_CONFIG.breakthroughCooldownMs).toISOString());
     if (!updated) throw new CultivationError('Không thể chuyển câu Thiên Kiếp; hãy kiểm tra câu hiện tại đã trả lời chưa.');
+    if (updated.status === 'passed') await this.onPassed?.(updated);
     return { attempt: updated, audio, realm: REALMS[updated.toMajor]! };
+  }
+
+  private async advanceWithoutAudio(value: BreakthroughAttempt) {
+    const now = new Date();
+    const updated = await this.repository.advanceAttempt(value.id, value.currentIndex, now.toISOString(),
+      new Date(now.getTime() + XP_CONFIG.breakthroughCooldownMs).toISOString());
+    if (!updated) {
+      const latest = await this.repository.getAttempt(value.id);
+      if (latest && (latest.currentIndex > value.currentIndex || latest.status !== 'active')) {
+        return { attempt: latest, realm: REALMS[latest.toMajor]! };
+      }
+      throw new CultivationError('Không thể chuyển nhóm câu Thiên Kiếp; dữ liệu vừa được thay đổi.');
+    }
+    if (updated.status === 'passed') await this.onPassed?.(updated);
+    return { attempt: updated, realm: REALMS[updated.toMajor]! };
+  }
+
+  private async synthesizeQuestions(questions: BreakthroughAttempt['questions']) {
+    const audios = [];
+    for (const question of questions) audios.push(await this.dictation.synthesizePublic(question.simplified));
+    return audios;
   }
   history(guildId: string, userId: string) { return this.repository.listAttempts(guildId, userId, 10); }
 }

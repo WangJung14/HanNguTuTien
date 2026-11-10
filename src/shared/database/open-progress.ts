@@ -10,6 +10,7 @@ import { applyCultivationMigrations } from '../../modules/cultivation/infrastruc
 import { applyPhase41Migrations } from '../../modules/quests/infrastructure/migrations.js';
 import { applyMountainMigrations } from '../../modules/mountain/infrastructure/migrations.js';
 import { applyPveMigrations } from '../../modules/pve/infrastructure/migrations.js';
+import { applySectMigrations } from '../../modules/sects/infrastructure/migrations.js';
 
 export function openProgress() {
   const path = getProgressPath();
@@ -25,6 +26,7 @@ export function openProgress() {
   applyPhase41Migrations(sqlite);
   applyMountainMigrations(sqlite);
   applyPveMigrations(sqlite);
+  applySectMigrations(sqlite);
   return { db: drizzle(sqlite), sqlite, close: () => sqlite.close() };
 }
 

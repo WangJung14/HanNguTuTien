@@ -22,6 +22,14 @@ const words: DictionaryEntry[] = [
   { id: 6, simplified: '你好', traditional: '你好', pinyinRaw: 'ni3 hao3', meanings: ['xin chào'], source: 'CVDICT' },
   { id: 7, simplified: '行', traditional: '行', pinyinRaw: 'xing2', meanings: ['được'], source: 'CVDICT' },
   { id: 8, simplified: '行', traditional: '行', pinyinRaw: 'hang2', meanings: ['hàng'], source: 'CVDICT' },
+  ...[...'一二三四五六七八九十天地玄黄'].map((hanzi, index) => ({
+    id: index + 9,
+    simplified: `词${hanzi}`,
+    traditional: `詞${hanzi}`,
+    pinyinRaw: `ci2 ${index % 2 ? 'yi1' : 'er4'}`,
+    meanings: [`nghĩa kiểm thử ${index + 1}`],
+    source: 'CVDICT' as const,
+  })),
 ];
 
 const dictionaryRepository: DictionaryRepository = {
@@ -31,7 +39,7 @@ const dictionaryRepository: DictionaryRepository = {
   findVietnamese: () => [],
 };
 
-async function setup() {
+async function setup(wordCount = 6) {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
   applyProgressMigrations(sqlite);
@@ -44,7 +52,7 @@ async function setup() {
   const audio = { synthesize: async () => ({ data: Buffer.from('wav'), format: 'wav' as const }) };
   const service = new DictationService(dictationRepository, decks, dictionary, audio);
   const deck = await decks.create('guild-1', 'user-1', 'Từ căn bản');
-  for (const word of words.slice(0, 6)) await decks.add('guild-1', 'user-1', deck.id, word.id);
+  for (const word of eligibleQuestions(words).slice(0, wordCount)) await decks.add('guild-1', 'user-1', deck.id, word.entryId);
   return { sqlite, dictionary, decks, deck, dictationRepository, service };
 }
 
@@ -68,7 +76,7 @@ describe('Dictation question selection', () => {
   });
 
   it('rejects a count larger than the eligible word pool', () => {
-    expect(() => chooseQuestions(eligibleQuestions(words), 20)).toThrow('Chỉ có');
+    expect(() => chooseQuestions(eligibleQuestions(words).slice(0, 19), 20)).toThrow('Chỉ có');
   });
 });
 
@@ -144,6 +152,30 @@ describe('Dictation sessions and persisted results', () => {
     expect(advanced.session.currentIndex).toBe(1);
     expect(await service.getReadQuestions(advanced.session)).toHaveLength(2);
     expect((await dictationRepository.findQuestions(session.id))[0]?.answer).toBeNull();
+    sqlite.close();
+  });
+
+  it('shows and submits a 20-question Discord worksheet in groups of ten', async () => {
+    const { sqlite, deck, service } = await setup(20);
+    const started = await service.start('guild-1', 'user-1', deck.id, 20, 'channel-1', () => 0);
+    expect(started.worksheet).toMatchObject({ batchStart: 0, batchEnd: 10 });
+    expect(started.worksheet?.audios).toHaveLength(10);
+
+    let current = started.session;
+    for (const formStart of [0, 5, 10, 15]) {
+      const all = await service.getResults(current.id);
+      const answers = all.slice(formStart, formStart + 5).map((question) => question.simplified);
+      const submitted = await service.submitWorksheetBatch(current, formStart, answers);
+      current = submitted.session;
+      expect(submitted.answered).toHaveLength(5);
+      if (formStart === 5) {
+        const next = await service.prepareWorksheet(current);
+        expect(next).toMatchObject({ batchStart: 10, batchEnd: 20 });
+        expect(next.audios).toHaveLength(10);
+      }
+    }
+    expect(current).toMatchObject({ status: 'completed', currentIndex: 20 });
+    expect((await service.getResults(current.id)).every((question) => question.isCorrect)).toBe(true);
     sqlite.close();
   });
 
