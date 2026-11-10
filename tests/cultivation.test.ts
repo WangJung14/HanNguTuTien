@@ -113,6 +113,22 @@ describe('Cultivation XP', () => {
     expect((sqlite.prepare('SELECT count(*) AS count FROM xp_admin_adjustments').get() as { count: number }).count).toBe(3);
     sqlite.close();
   });
+
+  it('adds an admin reward to the member existing XP instead of replacing it', async () => {
+    const { sqlite, repository } = setup();
+    const now = new Date().toISOString();
+    await repository.addXp('g', 'u', 500, 'seed', 'existing-xp', null, '2026-11-10', now, 10_000);
+
+    const adjustment = await repository.adjustXpAsAdmin(
+      'g', 'u', 'admin', 'interaction-reward-existing', 'reward', 125, 'Thưởng đóng góp', now,
+    );
+
+    expect(adjustment).toMatchObject({
+      previousTotalXp: 500, amount: 125, newTotalXp: 625, action: 'reward',
+    });
+    expect((await repository.getOrCreateProfile('g', 'u', now)).totalXp).toBe(625);
+    sqlite.close();
+  });
 });
 
 describe('Realm progression and breakthrough', () => {
@@ -140,6 +156,22 @@ describe('Realm progression and breakthrough', () => {
     expect((await repository.getOrCreateProfile('g', 'u', new Date().toISOString())).majorIndex).toBe(1);
     const restarted = new SqliteCultivationRepository(sqlite);
     expect((await restarted.getAttempt(current.id))?.status).toBe('passed');
+    sqlite.close();
+  });
+
+  it('treats a repeated answer submission as idempotent and keeps the first answer', async () => {
+    const { sqlite, repository, realms } = setup();
+    await repository.addXp('g', 'u', 100, 'seed', 'seed-idempotent', null, '2026-11-10', new Date().toISOString(), 999999);
+    const service = new BreakthroughService(repository, realms, fakeDictation());
+    const attempt = (await service.start('g', 'u', 1, () => 0)).attempt;
+    const first = await service.answer(attempt, attempt.questions[0]!.simplified);
+    const repeated = await service.answer(attempt, 'đáp án gửi trùng');
+
+    expect(first.correctCount).toBe(1);
+    expect(repeated.questions[0]).toMatchObject({
+      answer: attempt.questions[0]!.simplified, correct: true,
+    });
+    expect(repeated.correctCount).toBe(1);
     sqlite.close();
   });
 

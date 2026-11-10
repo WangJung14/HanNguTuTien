@@ -55,8 +55,14 @@ export class BreakthroughService {
     const question = value.questions[value.currentIndex]!;
     const correct = this.dictation.evaluatePublicAnswer(answer, question);
     const updated = await this.repository.answerAttempt(value.id, value.currentIndex, answer, correct, new Date().toISOString());
-    if (!updated) throw new CultivationError('Câu này đã được trả lời hoặc giao diện đã cũ.');
-    return updated;
+    if (updated) return updated;
+
+    const latest = await this.repository.getAttempt(value.id);
+    if (latest?.status === 'active' && latest.currentIndex === value.currentIndex &&
+        typeof latest.questions[value.currentIndex]?.answer === 'string') {
+      return latest;
+    }
+    throw new CultivationError('Câu này đã được trả lời hoặc giao diện đã cũ.');
   }
   async advance(value: BreakthroughAttempt) {
     const next = value.currentIndex + 1 < value.questions.length ? value.questions[value.currentIndex + 1] : null;

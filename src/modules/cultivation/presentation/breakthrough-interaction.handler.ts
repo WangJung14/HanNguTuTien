@@ -1,5 +1,5 @@
 import {
-  ActionRowBuilder, ButtonInteraction, ModalBuilder, ModalSubmitInteraction, TextInputBuilder,
+  ActionRowBuilder, ButtonInteraction, MessageFlags, ModalBuilder, ModalSubmitInteraction, TextInputBuilder,
   TextInputStyle,
 } from 'discord.js';
 import type { BreakthroughService } from '../application/breakthrough.service.js';
@@ -46,7 +46,19 @@ export async function handleCultivationModal(interaction: ModalSubmitInteraction
   const index = Number(rawIndex);
   if (action !== 'submit' || !interaction.guildId || !id || !interaction.message || !Number.isSafeInteger(index)) throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
   const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
-  if (value.currentIndex !== index) throw new CultivationError('Câu Thiên Kiếp này đã cũ.');
+  if (value.currentIndex !== index) {
+    await interaction.reply({ content: 'Câu này đã được trả lời hoặc phiên đã chuyển sang câu khác.', flags: MessageFlags.Ephemeral });
+    return;
+  }
   await interaction.deferUpdate();
-  await interaction.editReply(buildBreakthroughAnswered(await service.answer(value, interaction.fields.getTextInputValue('answer'))));
+  try {
+    const updated = await service.answer(value, interaction.fields.getTextInputValue('answer'));
+    await interaction.editReply(buildBreakthroughAnswered(updated));
+  } catch (error) {
+    if (!(error instanceof CultivationError)) throw error;
+    await interaction.followUp({
+      content: 'Câu này đã được trả lời hoặc giao diện đã cũ. Hãy tiếp tục từ bảng Thiên Kiếp hiện tại.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 }

@@ -160,7 +160,7 @@ export async function handleXpAdminModal(
         `Tu vi: **${adjustment.previousTotalXp.toLocaleString('vi-VN')} → ${adjustment.newTotalXp.toLocaleString('vi-VN')} XP**.`,
         `Lý do: ${escapeMarkdown(reason)}.${realmChange}`,
       ].join('\n'),
-      allowedMentions: { users: [targetId, actorId], parse: [] },
+      allowedMentions: { users: [...new Set([targetId, actorId])], parse: [] },
     });
   } catch (error) {
     console.error('Could not send admin XP announcement:', {
