@@ -155,16 +155,30 @@ export class PostgresCultivationRepository implements CultivationRepository {
   async answerAttempt(
     id: string, index: number, answerText: string, correct: boolean, now: string,
   ): Promise<BreakthroughAttempt | null> {
-    const rows = await this.sql`
-      UPDATE breakthrough_attempts
-      SET questions_json = jsonb_set(questions_json::jsonb, ARRAY[${index}::text],
-            (questions_json::jsonb -> ${index}) || ${JSON.stringify({ answer: answerText, correct })}::jsonb)::text,
-          correct_count = correct_count + ${correct ? 1 : 0}, updated_at = ${now}
-      WHERE id = ${id} AND status = 'active' AND current_index = ${index}
-        AND questions_json::jsonb -> ${index} -> 'answer' = 'null'::jsonb
-      RETURNING id
-    `;
-    return rows.length ? this.getAttempt(id) : null;
+    return this.sql.begin(async (transaction) => {
+      const rows = await transaction<AttemptRow[]>`
+        SELECT ${transaction.unsafe(ATTEMPT_COLUMNS)} FROM breakthrough_attempts
+        WHERE id=${id} AND status='active' AND current_index=${index} FOR UPDATE
+      `;
+      const current = mapAttempt(rows[0]);
+      const question = current?.questions[index];
+      if (!current || !question || question.answer !== null) return null;
+
+      current.questions[index] = { ...question, answer: answerText, correct };
+      const updated = await transaction`
+        UPDATE breakthrough_attempts
+        SET questions_json=${JSON.stringify(current.questions)},
+            correct_count=correct_count + ${correct ? 1 : 0}, updated_at=${now}
+        WHERE id=${id} AND status='active' AND current_index=${index}
+        RETURNING id
+      `;
+      if (!updated.length) return null;
+
+      const fresh = await transaction<AttemptRow[]>`
+        SELECT ${transaction.unsafe(ATTEMPT_COLUMNS)} FROM breakthrough_attempts WHERE id=${id}
+      `;
+      return mapAttempt(fresh[0]);
+    });
   }
 
   async advanceAttempt(id: string, index: number, now: string, cooldownUntil: string): Promise<BreakthroughAttempt | null> {
