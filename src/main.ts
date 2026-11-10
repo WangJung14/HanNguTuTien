@@ -1,3 +1,4 @@
+import { Client } from 'discord.js';
 import { getDatabaseProvider, getDictationTtsConfig, getDiscordConfig } from './config/env.js';
 import { buildBot } from './app/bot.js';
 import { openDictionary } from './shared/database/open-dictionary.js';
@@ -8,6 +9,7 @@ import { DeckService, PostgresDeckRepository, SqliteDeckRepository } from './mod
 import { createAudioProvider, DictationService, PostgresDictationRepository, SqliteDictationRepository } from './modules/dictation/index.js';
 import {
   BreakthroughService, DiscordRoleSync, PostgresCultivationRepository, RealmService, SqliteCultivationRepository, XpService,
+  type XpAwardEvent,
 } from './modules/cultivation/index.js';
 import { PostgresQuestService, QuestService } from './modules/quests/index.js';
 import { attachMeditationRunner,MeditationService,PostgresMeditationService } from './modules/meditation/index.js';
@@ -40,7 +42,34 @@ const cultivationRepository = postgresConnection
   ? new PostgresCultivationRepository(postgresConnection)
   : new SqliteCultivationRepository(progressConnection!.sqlite);
 const realmService = new RealmService(cultivationRepository);
-const xpService = new XpService(cultivationRepository);
+let discordClient: Client | null = null;
+const xpService = new XpService(cultivationRepository, async (event: XpAwardEvent) => {
+  const channelId = await cultivationRepository.getXpAnnouncementChannel(event.guildId);
+  if (!channelId) return;
+  if (!discordClient?.isReady()) throw new Error('Discord client is not ready to send XP announcements.');
+  const channel = await discordClient.channels.fetch(channelId);
+  if (!channel || !channel.isTextBased() || !('send' in channel) || typeof channel.send !== 'function') {
+    throw new Error(`XP announcement channel ${channelId} is unavailable or cannot accept messages.`);
+  }
+  const sourceNames: Record<string, string> = {
+    dictation_correct: 'trả lời khảo bài đúng',
+    dictation_complete: 'hoàn thành khảo bài',
+    dictation_perfect_10: 'hoàn thành khảo bài hoàn hảo',
+    meditation_tick: 'bế quan',
+    quest_collect_words: 'nhiệm vụ sưu tầm từ',
+    quest_correct_dictation: 'nhiệm vụ trả lời đúng',
+    quest_complete_session: 'nhiệm vụ hoàn thành phiên học',
+    quest_meditate_minutes: 'nhiệm vụ bế quan',
+    mountain_complete: 'hoàn thành Vấn Đỉnh',
+    secret_realm_clear: 'vượt Bí Cảnh',
+    boss_hsk_win: 'đánh bại Boss HSK',
+  };
+  const reason = sourceNames[event.source] ?? event.source.replaceAll('_', ' ');
+  await channel.send({
+    content: `🎉 <@${event.userId}> nhận **+${event.amount} XP** nhờ ${reason}. Tổng tu vi: **${event.totalXp.toLocaleString('vi-VN')} XP**.`,
+    allowedMentions: { parse: [] },
+  });
+});
 const breakthroughService = new BreakthroughService(cultivationRepository, realmService, dictationService);
 const roleSync = new DiscordRoleSync(cultivationRepository);
 const questService = postgresConnection
@@ -73,6 +102,7 @@ const learningRewards={
 const client = buildBot(dictionaryService, bagService, deckService, dictationService, {
   repository: cultivationRepository, realms: realmService, xp: xpService, breakthrough: breakthroughService, roleSync,
 },{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler});
+discordClient = client;
 const stopMeditation=attachMeditationRunner(client,meditationService);
 const healthServer=startHealthServer(client);
 mountainScheduler.start(client);

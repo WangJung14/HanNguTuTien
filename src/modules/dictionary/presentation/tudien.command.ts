@@ -4,7 +4,6 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   escapeMarkdown,
-  MessageFlags,
   SlashCommandBuilder,
 } from 'discord.js';
 import type { DictionaryService } from '../application/dictionary.service.js';
@@ -31,7 +30,7 @@ export async function handleTudien(
   service: DictionaryService,
   createExtraButtons?: (entries: DictionaryEntry[], ownerId: string) => ActionRowBuilder<ButtonBuilder>[],
 ) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferReply();
   const query = interaction.options.getString('tu', true);
   const mode = (interaction.options.getString('kieu') || 'auto') as SearchMode;
   const result = service.search(query, mode);

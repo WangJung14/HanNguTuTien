@@ -6,8 +6,19 @@ export type DictationRewardQuestion = {
   usedHint: boolean; replayCount: number;
 };
 
+export type XpAwardEvent = {
+  guildId: string;
+  userId: string;
+  amount: number;
+  totalXp: number;
+  source: string;
+};
+
 export class XpService {
-  constructor(private readonly repository: CultivationRepository) {}
+  constructor(
+    private readonly repository: CultivationRepository,
+    private readonly onAward?: (event: XpAwardEvent) => Promise<void>,
+  ) {}
 
   async awardQuestion(guildId: string, userId: string, question: DictationRewardQuestion): Promise<XpAward> {
     if (!question.isCorrect) return this.noAward(guildId, userId);
@@ -36,19 +47,35 @@ export class XpService {
   async awardExternal(guildId: string, userId: string, amount: number, source: string, rewardKey: string,
     options?: { sessionId?: string; scopedDailyCap?: number; scopedSources?: string[]; maxTotalXp?: number; now?: Date }): Promise<XpAward> {
     const now = options?.now ?? new Date();
-    return this.repository.addXp(guildId, userId, amount, source, rewardKey, options?.sessionId ?? null,
+    const award = await this.repository.addXp(guildId, userId, amount, source, rewardKey, options?.sessionId ?? null,
       vietnamDate(now), now.toISOString(), XP_CONFIG.dailyCap, {
         scopedDailyCap: options?.scopedDailyCap, scopedSources: options?.scopedSources,
         maxTotalXp: options?.maxTotalXp,
       });
+    await this.publishAward({ guildId, userId, amount: award.awarded, totalXp: award.totalXp, source }, award);
+    return award;
   }
 
   private async award(guildId: string, userId: string, amount: number, source: string,
     rewardKey: string, sessionId: string | null): Promise<XpAward> {
     const now = new Date();
-    return this.repository.addXp(guildId, userId, amount, source, rewardKey, sessionId,
+    const award = await this.repository.addXp(guildId, userId, amount, source, rewardKey, sessionId,
       vietnamDate(now), now.toISOString(), XP_CONFIG.dailyCap);
+    await this.publishAward({ guildId, userId, amount: award.awarded, totalXp: award.totalXp, source }, award);
+    return award;
   }
+
+  private async publishAward(event: XpAwardEvent, award: XpAward): Promise<void> {
+    if (!this.onAward || award.awarded <= 0 || award.duplicate) return;
+    try {
+      await this.onAward(event);
+    } catch (error) {
+      console.error('Could not publish XP award notification:', {
+        guildId: event.guildId, userId: event.userId, source: event.source, error,
+      });
+    }
+  }
+
   private async noAward(guildId: string, userId: string): Promise<XpAward> {
     const profile = await this.repository.getOrCreateProfile(guildId, userId, new Date().toISOString());
     return { awarded: 0, duplicate: false, capped: false, totalXp: profile.totalXp };

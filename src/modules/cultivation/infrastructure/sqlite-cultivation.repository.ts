@@ -155,6 +155,23 @@ export class SqliteCultivationRepository implements CultivationRepository {
       .all(guildId) as { majorIndex: number; roleId: string }[];
     return new Map(rows.map((row) => [row.majorIndex, row.roleId]));
   }
+
+  getXpAnnouncementChannel(guildId: string): string | null {
+    const row = this.sqlite.prepare('SELECT channel_id AS channelId FROM xp_announcement_channels WHERE guild_id = ?')
+      .get(guildId) as { channelId: string } | undefined;
+    return row?.channelId ?? null;
+  }
+
+  setXpAnnouncementChannel(guildId: string, channelId: string | null, now: string): void {
+    if (channelId === null) {
+      this.sqlite.prepare('DELETE FROM xp_announcement_channels WHERE guild_id = ?').run(guildId);
+      return;
+    }
+    this.sqlite.prepare(`INSERT INTO xp_announcement_channels (guild_id,channel_id,updated_at)
+      VALUES (?,?,?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id,updated_at=excluded.updated_at`)
+      .run(guildId, channelId, now);
+  }
+
   listAttempts(guildId: string, userId: string, limit: number): BreakthroughAttempt[] {
     return (this.sqlite.prepare(`${ATTEMPT_SELECT} WHERE guild_id = ? AND user_id = ?
       ORDER BY created_at DESC LIMIT ?`).all(guildId, userId, limit) as AttemptRow[]).map(attempt);

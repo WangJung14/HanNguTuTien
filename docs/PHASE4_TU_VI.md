@@ -2,9 +2,13 @@
 
 ## Lệnh người chơi
 
-- `/tuvi`: xem tổng XP, cảnh giới thực tế, tiểu cảnh giới, thanh tiến độ và điều kiện tiếp theo.
+- `/tuvi`: công khai xem tổng XP, cảnh giới thực tế, tiểu cảnh giới, thanh tiến độ và điều kiện tiếp theo.
 - `/dotpha botu:<id>`: bắt đầu hoặc mở lại Thiên Kiếp 10 câu từ bộ cá nhân. Bộ phải có ít nhất 10 từ đủ điều kiện. Đạt 8/10 để sang đại cảnh giới kế tiếp.
 - `/lichsutuvi`: xem XP ledger và những lần Thiên Kiếp gần đây.
+- `/xpkenh dat kenh:<kênh>`: admin có quyền Manage Server chọn kênh công khai nhận thông báo mỗi khi có XP mới.
+- `/xpkenh xoa`: tắt thông báo XP tự động.
+
+Thông báo chỉ gửi khi XP thực sự được cộng; claim trùng hoặc bị giới hạn còn 0 XP không tạo thông báo. Mỗi phần thưởng riêng được gửi riêng, vì vậy hoàn thành một phiên khảo bài có thể tạo nhiều tin nhắn. Bot cần quyền View Channel và Send Messages trong kênh đã chọn.
 
 Thất bại Thiên Kiếp không trừ XP và áp dụng cooldown mặc định 6 giờ. Một người chỉ có một lần Thiên Kiếp đang hoạt động trong mỗi server.
 
@@ -51,5 +55,7 @@ npm.cmd run register
 npm.cmd run build
 npm.cmd start
 ```
+
+Sau khi deploy bản mới, đăng ký lại slash commands để xuất hiện `/xpkenh`. Cấu hình kênh một lần cho mỗi server; lựa chọn được lưu bền vững cùng dữ liệu tiến độ.
 
 Đặt role của bot cao hơn toàn bộ role cảnh giới muốn quản lý.

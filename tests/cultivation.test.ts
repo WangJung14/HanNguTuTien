@@ -59,6 +59,26 @@ describe('Cultivation XP', () => {
     expect((await repository.getOrCreateProfile('g', 'u', now)).totalXp).toBe(200);
     sqlite.close();
   });
+
+  it('persists the guild announcement channel and notifies only newly awarded XP', async () => {
+    const { sqlite, repository } = setup();
+    sqlite.exec('DROP TABLE xp_announcement_channels');
+    applyCultivationMigrations(sqlite);
+    const notifications: { amount: number; source: string; totalXp: number }[] = [];
+    const xp = new XpService(repository, async (event) => {
+      notifications.push({ amount: event.amount, source: event.source, totalXp: event.totalXp });
+    });
+    await repository.setXpAnnouncementChannel('g', 'channel-1', new Date().toISOString());
+    expect(await repository.getXpAnnouncementChannel('g')).toBe('channel-1');
+
+    await xp.awardExternal('g', 'u', 25, 'test_reward', 'reward-1');
+    await xp.awardExternal('g', 'u', 25, 'test_reward', 'reward-1');
+    expect(notifications).toEqual([{ amount: 25, source: 'test_reward', totalXp: 25 }]);
+
+    await repository.setXpAnnouncementChannel('g', null, new Date().toISOString());
+    expect(await repository.getXpAnnouncementChannel('g')).toBeNull();
+    sqlite.close();
+  });
 });
 
 describe('Realm progression and breakthrough', () => {

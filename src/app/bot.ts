@@ -1,4 +1,5 @@
 import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
+import { buildMenuEmbed } from './menu.js';
 import { handleTudien, type DictionaryService } from '../modules/dictionary/index.js';
 import { createSaveButtons, handleBagButton, handleTuikho, type BagService } from '../modules/bag/index.js';
 import { createDeckButtons, handleBotu, handleDeckButton, handleDeckSelect, DeckError, type DeckService } from '../modules/decks/index.js';
@@ -8,7 +9,7 @@ import {
 } from '../modules/dictation/index.js';
 import {
   CultivationError, handleCultivationButton, handleCultivationModal, handleDotpha, handleLichsu,
-  handleRealmRole, handleTuvi, type BreakthroughService, type DiscordRoleSync, type RealmService,
+  handleRealmRole, handleTuvi, handleXpkenh, type BreakthroughService, type DiscordRoleSync, type RealmService,
   type CultivationRepository, type XpService,
 } from '../modules/cultivation/index.js';
 import { handleBequan,handleBequanConfig,handleDiemdanh,handleNhiemvu,type QuestService } from '../modules/quests/index.js';
@@ -84,10 +85,8 @@ export function buildBot(
           await interaction.reply({ content: '🏓 Sư phụ vẫn đang tu luyện!', flags: MessageFlags.Ephemeral });
           break;
         case 'help':
-          await interaction.reply({
-            content: '📜 Lệnh: `/tudien`, `/tuikho`, `/botu`, `/khaobai`, `/tuvi`, `/dotpha`, `/nhiemvu`, `/bequan`, `/diemdanh`, `/leonui`, `/bicanh`, `/boss`. Admin: `/canhgioirole`, `/bequancauhinh`.',
-            flags: MessageFlags.Ephemeral,
-          });
+        case 'menu':
+          await interaction.reply({ embeds: [buildMenuEmbed()], flags: MessageFlags.Ephemeral });
           break;
         case 'tudien':
           await handleTudien(interaction, dictionaryService, (entries, ownerId) => [
@@ -105,6 +104,7 @@ export function buildBot(
           await handleKhaobai(interaction, dictationService);
           break;
         case 'tuvi': await handleTuvi(interaction, cultivation.realms); break;
+        case 'xpkenh': await handleXpkenh(interaction, cultivation.repository); break;
         case 'dotpha': await handleDotpha(interaction, cultivation.breakthrough); break;
         case 'lichsutuvi': await handleLichsu(interaction, cultivation.xp, cultivation.breakthrough); break;
         case 'canhgioirole': await handleRealmRole(interaction, cultivation.repository, cultivation.realms, cultivation.roleSync); break;

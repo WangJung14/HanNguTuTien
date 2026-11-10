@@ -240,6 +240,25 @@ export class PostgresCultivationRepository implements CultivationRepository {
     return new Map(rows.map((row) => [row.majorIndex, row.roleId]));
   }
 
+  async getXpAnnouncementChannel(guildId: string): Promise<string | null> {
+    const rows = await this.sql<{ channelId: string }[]>`
+      SELECT channel_id AS "channelId" FROM xp_announcement_channels WHERE guild_id = ${guildId}
+    `;
+    return rows[0]?.channelId ?? null;
+  }
+
+  async setXpAnnouncementChannel(guildId: string, channelId: string | null, now: string): Promise<void> {
+    if (channelId === null) {
+      await this.sql`DELETE FROM xp_announcement_channels WHERE guild_id = ${guildId}`;
+      return;
+    }
+    await this.sql`
+      INSERT INTO xp_announcement_channels (guild_id,channel_id,updated_at)
+      VALUES (${guildId},${channelId},${now})
+      ON CONFLICT (guild_id) DO UPDATE SET channel_id=EXCLUDED.channel_id,updated_at=EXCLUDED.updated_at
+    `;
+  }
+
   async listAttempts(guildId: string, userId: string, limit: number): Promise<BreakthroughAttempt[]> {
     const rows = await this.sql<AttemptRow[]>`
       SELECT ${this.sql.unsafe(ATTEMPT_COLUMNS)} FROM breakthrough_attempts

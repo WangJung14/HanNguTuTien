@@ -45,6 +45,8 @@ export interface CultivationRepository {
   setRealmRole(guildId: string, majorIndex: number, roleId: string, now: string): Awaitable<void>;
   removeRealmRole(guildId: string, majorIndex: number): Awaitable<void>;
   getRealmRoles(guildId: string): Awaitable<Map<number, string>>;
+  getXpAnnouncementChannel(guildId: string): Awaitable<string | null>;
+  setXpAnnouncementChannel(guildId: string, channelId: string | null, now: string): Awaitable<void>;
   listAttempts(guildId: string, userId: string, limit: number): Awaitable<BreakthroughAttempt[]>;
 }
 

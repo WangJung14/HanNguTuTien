@@ -1,5 +1,5 @@
 import {
-  ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder,
+  ChannelType, ChatInputCommandInteraction, MessageFlags, PermissionFlagsBits, SlashCommandBuilder,
 } from 'discord.js';
 import { REALMS } from '../domain/cultivation.config.js';
 import type { CultivationRepository } from '../domain/cultivation.types.js';
@@ -10,6 +10,13 @@ import type { DiscordRoleSync } from '../infrastructure/discord-role-sync.js';
 import { buildBreakthroughQuestion, buildHistoryEmbed, buildProfileEmbed } from './cultivation-ui.js';
 
 export const tuviDefinition = new SlashCommandBuilder().setName('tuvi').setDescription('🌀 Xem tu vi và cảnh giới hiện tại');
+export const xpkenhDefinition = new SlashCommandBuilder().setName('xpkenh')
+  .setDescription('Cấu hình kênh thông báo nhận XP trong server')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  .addSubcommand((subcommand) => subcommand.setName('dat').setDescription('Chọn kênh nhận thông báo XP')
+    .addChannelOption((option) => option.setName('kenh').setDescription('Kênh văn bản công khai').setRequired(true)
+      .addChannelTypes(ChannelType.GuildText)))
+  .addSubcommand((subcommand) => subcommand.setName('xoa').setDescription('Tắt thông báo XP tự động'));
 export const dotphaDefinition = new SlashCommandBuilder().setName('dotpha').setDescription('⚡ Khiêu chiến Thiên Kiếp để đột phá đại cảnh giới')
   .addIntegerOption((o) => o.setName('botu').setDescription('ID bộ từ cá nhân có ít nhất 10 từ hợp lệ').setRequired(true).setMinValue(1));
 export const lichsutuviDefinition = new SlashCommandBuilder().setName('lichsutuvi').setDescription('📜 Xem lịch sử nhận XP và Thiên Kiếp');
@@ -27,7 +34,34 @@ export const canhgioiroleDefinition = new SlashCommandBuilder().setName('canhgio
 
 export async function handleTuvi(interaction: ChatInputCommandInteraction, realms: RealmService) {
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });
-  await interaction.reply({ embeds: [buildProfileEmbed(await realms.getProgress(interaction.guildId, interaction.user.id))], flags: MessageFlags.Ephemeral });
+  await interaction.reply({ embeds: [buildProfileEmbed(await realms.getProgress(interaction.guildId, interaction.user.id))] });
+}
+export async function handleXpkenh(interaction: ChatInputCommandInteraction, repository: CultivationRepository) {
+  if (!interaction.guild || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return void await interaction.reply({ content: 'Lệnh này cần quyền Manage Server.', flags: MessageFlags.Ephemeral });
+  }
+  if (interaction.options.getSubcommand() === 'xoa') {
+    await repository.setXpAnnouncementChannel(interaction.guild.id, null, new Date().toISOString());
+    await interaction.reply({ content: 'Đã tắt thông báo XP tự động trong server này.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const selectedChannel = interaction.options.getChannel('kenh', true);
+  const channel = await interaction.guild.channels.fetch(selectedChannel.id);
+  if (!channel || !channel.isTextBased() || !('permissionsFor' in channel)) {
+    await interaction.reply({ content: 'Không thể dùng kênh đã chọn để gửi thông báo.', flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const botMember = interaction.guild.members.me ?? await interaction.guild.members.fetchMe();
+  const permissions = channel.permissionsFor(botMember);
+  if (!permissions?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages])) {
+    await interaction.reply({
+      content: 'Bot cần quyền View Channel và Send Messages trong kênh đã chọn.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  await repository.setXpAnnouncementChannel(interaction.guild.id, channel.id, new Date().toISOString());
+  await interaction.reply({ content: `✅ Đã đặt ${channel} làm kênh thông báo XP.`, flags: MessageFlags.Ephemeral });
 }
 export async function handleLichsu(interaction: ChatInputCommandInteraction, xp: XpService, breakthrough: BreakthroughService) {
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });

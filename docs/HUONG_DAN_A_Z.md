@@ -1,5 +1,7 @@
 # Hướng dẫn A–Z — Hán Ngữ Tu Tiên / Dictionary Module v1
 
+Hướng dẫn sử dụng bot dành cho thành viên và quản trị viên Discord: [Hướng dẫn người dùng](./HUONG_DAN_NGUOI_DUNG.md).
+
 ## 0. Mục tiêu
 
 Có `/tudien` tra từ giản thể/phồn thể/Pinyin/tiếng Việt trên Discord. Dữ liệu CVDICT giữ nguyên. Bot chỉ đọc một bản sao tối ưu tìm kiếm. Phần XP, chính tả, TTS, flashcard sẽ triển khai sau.
@@ -105,7 +107,9 @@ Vào server, thử:
 - `/tudien tu:học kieu:Nghĩa tiếng Việt`
 - `/tudien tu:行`
 
-Kết quả được gửi riêng cho người thực hiện lệnh (ephemeral), không spam kênh.
+Kết quả `/tudien` và hồ sơ `/tuvi` hiển thị công khai để mọi người cùng xem. Các lệnh có dữ liệu cá nhân như `/tuikho` vẫn trả lời riêng tư.
+
+Admin có quyền Manage Server đăng ký lệnh rồi dùng `/xpkenh dat` để chọn kênh công khai nhận thông báo mỗi khi thành viên được cộng XP. Dùng `/xpkenh xoa` để tắt.
 
 ## 8. Cách code vận hành
 

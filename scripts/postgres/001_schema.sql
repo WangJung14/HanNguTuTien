@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS guild_realm_roles (
   guild_id TEXT NOT NULL, major_index INTEGER NOT NULL, role_id TEXT NOT NULL, updated_at TEXT NOT NULL,
   PRIMARY KEY(guild_id,major_index), UNIQUE(guild_id,role_id)
 );
+CREATE TABLE IF NOT EXISTS xp_announcement_channels (
+  guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS meditation_config (guild_id TEXT PRIMARY KEY,channel_id TEXT,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS meditation_sessions (
@@ -154,14 +157,14 @@ CREATE TABLE IF NOT EXISTS pve_answers (
   FOREIGN KEY(run_id,round_index) REFERENCES pve_rounds(run_id,round_index)
 );
 
-INSERT INTO app_schema_migrations(version) VALUES(1) ON CONFLICT(version) DO NOTHING;
+INSERT INTO app_schema_migrations(version) VALUES(1),(2) ON CONFLICT(version) DO NOTHING;
 
 DO $$
 DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'saved_words','decks','deck_words','dictation_sessions','dictation_results','cultivation_profiles','xp_ledger',
-    'breakthrough_attempts','guild_realm_roles','meditation_config','meditation_sessions','meditation_rewards',
+    'breakthrough_attempts','guild_realm_roles','xp_announcement_channels','meditation_config','meditation_sessions','meditation_rewards',
     'daily_quest_progress','daily_quest_entries','learning_streaks','learning_activity_days','mountain_matches',
     'mountain_players','mountain_rounds','mountain_answers','pve_runs','pve_players','pve_rounds','pve_answers'
   ] LOOP EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY',t); END LOOP;

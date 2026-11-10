@@ -44,4 +44,9 @@ export function applyCultivationMigrations(sqlite: Database.Database): void {
       sqlite.pragma('user_version = 5');
     })();
   }
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS xp_announcement_channels (
+      guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, updated_at TEXT NOT NULL
+    )
+  `);
 }
