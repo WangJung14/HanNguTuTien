@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 export function applyDictationMigrations(sqlite: Database.Database): void {
   const version = sqlite.pragma('user_version', { simple: true }) as number;
-  if (version > 9) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 10) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version < 2) throw new Error('Run Phase 2.1 migration before Phase 3 migration.');
   if (version === 2) {
     sqlite.transaction(() => {

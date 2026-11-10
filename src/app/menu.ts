@@ -44,6 +44,11 @@ export function buildMenuEmbed(): EmbedBuilder {
         '`/tongmon chucvu|chuyengiao|trucxuat|giaitan` — quản trị Tông Môn.',
         '`/tongmon nhiemvu|donggop|bangxep` — nhiệm vụ tuần, CP và xếp hạng.',
       ].join('\n') },
+      { name: '🗺️ Giang Hồ Kỳ Ngộ', value: [
+        '`/giangho` — bắt đầu hoặc tiếp tục hành trình solo tại checkpoint.',
+        '`/giangho chuong:<1–3>` — vào lại một chương đã mở khóa để ôn tập.',
+        'Ba chương, mỗi chương 5 cảnh; trả lời sai được giải thích và không mất XP.',
+      ].join('\n') },
       { name: '⚙️ Quản trị server', value: [
         '**Admin** `/xpkenh dat|xoa` — đặt hoặc tắt kênh thông báo XP.',
         '**Admin** `/xpadmin user:<thành viên>` — thưởng/phạt XP có ledger.',

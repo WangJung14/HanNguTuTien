@@ -1,6 +1,6 @@
 import type { Sql } from 'postgres';
 
-export const REQUIRED_POSTGRES_SCHEMA_VERSIONS = [1, 2, 3, 4] as const;
+export const REQUIRED_POSTGRES_SCHEMA_VERSIONS = [1, 2, 3, 4, 5] as const;
 export const REQUIRED_RUNTIME_TABLES = [
   'saved_words', 'decks', 'deck_words', 'dictation_sessions', 'dictation_results',
   'cultivation_profiles', 'xp_ledger', 'breakthrough_attempts', 'guild_realm_roles',
@@ -12,6 +12,7 @@ export const REQUIRED_RUNTIME_TABLES = [
   'sects', 'sect_members', 'sect_join_requests', 'sect_contribution_ledger',
   'sect_contribution_claims', 'sect_quests', 'sect_quest_progress', 'sect_quest_events',
   'guild_cultivation_leaderboard_config',
+  'adventure_progress', 'adventure_answers', 'adventure_chapter_completions',
 ] as const;
 
 export function missingSchemaVersions(applied: readonly number[]): number[] {

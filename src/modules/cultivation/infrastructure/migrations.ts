@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 export function applyCultivationMigrations(sqlite: Database.Database): void {
   const version = sqlite.pragma('user_version', { simple: true }) as number;
-  if (version > 9) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 10) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version < 4) throw new Error('Run Phase 3 migration before Phase 4 migration.');
   if (version === 4) {
     sqlite.transaction(() => {

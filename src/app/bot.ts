@@ -18,6 +18,7 @@ import type { MeditationService } from '../modules/meditation/index.js';
 import{handleLeonui,handleMountainButton,MountainError,type MountainMatchService,type MountainScheduler}from'../modules/mountain/index.js';
 import{handleBicanh,handleBoss,handlePveButton,PveError,type PveScheduler,type PveService}from'../modules/pve/index.js';
 import{handleBangxeptuvi,handleTongmon,SectError,type CultivationLeaderboardService,type SectService}from'../modules/sects/index.js';
+import{AdventureError,handleAdventureInteraction,handleGiangho,type AdventureService}from'../modules/adventure/index.js';
 
 type CultivationDependencies = { repository: CultivationRepository; realms: RealmService; xp: XpService;
   breakthrough: BreakthroughService; roleSync: DiscordRoleSync };
@@ -28,6 +29,7 @@ type Phase41Dependencies={quests:Pick<QuestService,'recordSavedWord'|'recordCorr
 type MountainDependencies={service:MountainMatchService;scheduler:MountainScheduler};
 type PveDependencies={service:PveService;scheduler:PveScheduler};
 type SectDependencies={service:SectService;leaderboard:CultivationLeaderboardService};
+type AdventureDependencies={service:AdventureService};
 
 export function buildBot(
   dictionaryService: DictionaryService,
@@ -39,6 +41,7 @@ export function buildBot(
   mountain:MountainDependencies,
   pve:PveDependencies,
   sects:SectDependencies,
+  adventure:AdventureDependencies,
 ) {
   const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits.GuildVoiceStates] });
 
@@ -70,6 +73,7 @@ export function buildBot(
       }
       if(interaction.isButton()&&interaction.customId.startsWith('mountain:')){await handleMountainButton(interaction,mountain.service,mountain.scheduler);return;}
       if(interaction.isButton()&&interaction.customId.startsWith('pve:')){await handlePveButton(interaction,pve.service,pve.scheduler);return;}
+      if(interaction.isButton()&&interaction.customId.startsWith('adventure:')){await handleAdventureInteraction(interaction,adventure.service);return;}
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('deck:')) {
         await handleDeckSelect(interaction, deckService);
         return;
@@ -78,6 +82,7 @@ export function buildBot(
         await handleDictationSelect(interaction, dictationService);
         return;
       }
+      if(interaction.isStringSelectMenu()&&interaction.customId.startsWith('adventure:')){await handleAdventureInteraction(interaction,adventure.service);return;}
       if (interaction.isModalSubmit() && interaction.customId.startsWith('dictation:')) {
         await handleDictationModal(interaction, dictationService, phase41.rewards);
         return;
@@ -130,11 +135,12 @@ export function buildBot(
         case 'boss':await handleBoss(interaction,pve.service);break;
         case 'tongmon':await handleTongmon(interaction,sects.service);break;
         case 'bangxeptuvi':await handleBangxeptuvi(interaction,sects.leaderboard);break;
+        case 'giangho':await handleGiangho(interaction,adventure.service);break;
       }
     } catch (error) {
       console.error('Discord interaction failed:', error);
       if (!interaction.isRepliable()) return;
-      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError || error instanceof SectError
+      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError || error instanceof SectError || error instanceof AdventureError
         ? `⚠️ ${error.message}` : 'Sư phụ gặp lỗi khi xử lý. Hãy thử lại sau.';
       try {
         if (interaction.deferred || interaction.replied) {

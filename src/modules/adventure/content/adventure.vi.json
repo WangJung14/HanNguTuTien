@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "locale": "vi-VN",
+  "chapters": [
+    {
+      "id": "so_nhap_giang_ho",
+      "title": "Sơ Nhập Giang Hồ",
+      "summary": "Học chào hỏi và giới thiệu bản thân khi lần đầu bước vào giang hồ.",
+      "scenes": [
+        {"id":"cong_tran","title":"Cổng cổ trấn","npc":"Lão Tiều Phu","kind":"story","text":"Sương sớm phủ con đường núi. Một lão tiều phu mỉm cười và chắp tay chào bạn.","prompt":"Bạn đáp lại thế nào?","lesson":"你好 (nǐ hǎo) nghĩa là xin chào.","options":[{"id":"hello","label":"你好！","correct":true,"feedback":"Lão tiều phu vui vẻ đáp: 你好！"},{"id":"bye","label":"再见！","correct":false,"feedback":"再见 là tạm biệt. Khi mới gặp, hãy dùng 你好。"}]},
+        {"id":"hoi_ten","title":"Hỏi danh tính","npc":"Lão Tiều Phu","kind":"question","text":"Lão hỏi: 你叫什么名字？","prompt":"Câu này có nghĩa là gì?","lesson":"你叫什么名字？(nǐ jiào shénme míngzi?) — Bạn tên là gì?","options":[{"id":"name","label":"Bạn tên là gì?","correct":true,"feedback":"Chính xác. 叫 là được gọi/tên là."},{"id":"where","label":"Bạn sống ở đâu?","correct":false,"feedback":"Hỏi nơi ở thường dùng 你住在哪里？"},{"id":"age","label":"Bạn bao nhiêu tuổi?","correct":false,"feedback":"Hỏi tuổi dùng 你几岁？ hoặc 你多大？"}]},
+        {"id":"gioi_thieu","title":"Tự giới thiệu","npc":"Lão Tiều Phu","kind":"question","text":"Bạn muốn nói “Tôi tên là Minh”.","prompt":"Chọn câu đúng.","lesson":"我叫… (wǒ jiào…) dùng để giới thiệu tên.","options":[{"id":"wojiao","label":"我叫明。","correct":true,"feedback":"Đúng! 我叫明 — Tôi tên là Minh."},{"id":"nijiao","label":"你叫明。","correct":false,"feedback":"你 là bạn. Muốn nói tôi, hãy dùng 我。"},{"id":"tajiao","label":"他叫明。","correct":false,"feedback":"他 là anh ấy. Chủ ngữ đúng ở đây là 我。"}]},
+        {"id":"rat_vui","title":"Bằng hữu mới","npc":"Tiểu Vân","kind":"question","text":"Một thiếu nữ áo xanh nói: 很高兴认识你。","prompt":"Nàng ấy đang nói gì?","lesson":"很高兴认识你 — Rất vui được gặp bạn.","options":[{"id":"nice","label":"Rất vui được gặp bạn.","correct":true,"feedback":"Đúng. 认识 là làm quen/biết."},{"id":"thanks","label":"Cảm ơn bạn.","correct":false,"feedback":"Cảm ơn là 谢谢你。"},{"id":"sorry","label":"Xin lỗi bạn.","correct":false,"feedback":"Xin lỗi là 对不起。"}]},
+        {"id":"tam_biet","title":"Lên đường","npc":"Tiểu Vân","kind":"story","text":"Con đường đến Thanh Vân Trấn đã hiện ra. Tiểu Vân vẫy tay trước khi hai người tạm chia tay.","prompt":"Chọn lời tạm biệt phù hợp.","lesson":"再见 (zàijiàn) — hẹn gặp lại/tạm biệt.","options":[{"id":"goodbye","label":"再见！","correct":true,"feedback":"Tiểu Vân đáp: 再见！Hẹn gặp lại ở Thanh Vân Trấn."},{"id":"morning","label":"早上好！","correct":false,"feedback":"早上好 là chào buổi sáng, không phải lời tạm biệt."}]}
+      ]
+    },
+    {
+      "id": "thanh_van_tran",
+      "title": "Thanh Vân Trấn",
+      "summary": "Mua bán, số đếm và hỏi giá tại khu chợ đông đúc.",
+      "scenes": [
+        {"id":"vao_cho","title":"Khu chợ Thanh Vân","npc":"Chủ Quán","kind":"story","text":"Mùi trà mới và bánh bao lan khắp phố. Chủ quán hỏi bạn muốn mua gì.","prompt":"Nói “Tôi muốn mua trà”.","lesson":"我想买茶 — Tôi muốn mua trà.","options":[{"id":"buytea","label":"我想买茶。","correct":true,"feedback":"Chủ quán gật đầu và lấy một gói trà."},{"id":"drinktea","label":"我喝茶。","correct":false,"feedback":"我喝茶 là tôi uống trà. 买 mới mang nghĩa mua."}]},
+        {"id":"hoi_gia","title":"Hỏi giá","npc":"Chủ Quán","kind":"question","text":"Bạn cầm gói trà lên xem.","prompt":"Câu nào dùng để hỏi “Cái này bao nhiêu tiền?”","lesson":"这个多少钱？(zhège duōshao qián?) — Cái này bao nhiêu tiền?","options":[{"id":"price","label":"这个多少钱？","correct":true,"feedback":"Đúng! 多少 dùng để hỏi số lượng/giá không xác định."},{"id":"what","label":"这是什么？","correct":false,"feedback":"这是什么？ nghĩa là Đây là cái gì?"},{"id":"where","label":"这个在哪里？","correct":false,"feedback":"在哪里 dùng để hỏi ở đâu."}]},
+        {"id":"gia_tien","title":"Mười đồng","npc":"Chủ Quán","kind":"question","text":"Chủ quán đáp: 十块钱。","prompt":"Gói trà giá bao nhiêu?","lesson":"十 (shí) là mười; 块 là đơn vị tiền khẩu ngữ.","options":[{"id":"ten","label":"10 đồng","correct":true,"feedback":"Chính xác: 十块钱 là mười đồng."},{"id":"five","label":"5 đồng","correct":false,"feedback":"Năm là 五 (wǔ)."},{"id":"twenty","label":"20 đồng","correct":false,"feedback":"Hai mươi là 二十 (èrshí)."}]},
+        {"id":"dem_banh","title":"Quầy bánh bao","npc":"A Phúc","kind":"question","text":"A Phúc xếp 三个包子 vào giỏ.","prompt":"Có bao nhiêu chiếc bánh bao?","lesson":"三 (sān) là ba; 个 là lượng từ thông dụng.","options":[{"id":"three","label":"3 chiếc","correct":true,"feedback":"Đúng: 三个包子 — ba chiếc bánh bao."},{"id":"two","label":"2 chiếc","correct":false,"feedback":"Hai là 两 hoặc 二 tùy ngữ cảnh."},{"id":"four","label":"4 chiếc","correct":false,"feedback":"Bốn là 四 (sì)."}]},
+        {"id":"thanh_toan","title":"Giao dịch hoàn tất","npc":"Chủ Quán","kind":"story","text":"Bạn đưa tiền, nhận trà và chuẩn bị rời chợ.","prompt":"Nói lời cảm ơn.","lesson":"谢谢 (xièxie) — cảm ơn; 不客气 — không có gì.","options":[{"id":"thanks","label":"谢谢！","correct":true,"feedback":"Chủ quán cười: 不客气！"},{"id":"sorry","label":"对不起！","correct":false,"feedback":"对不起 là xin lỗi. Trong tình huống này nên nói 谢谢。"}]}
+      ]
+    },
+    {
+      "id": "thi_luyen_son_mon",
+      "title": "Thí Luyện Sơn Môn",
+      "summary": "Vận dụng hội thoại cơ bản để vượt khảo nghiệm nhập môn.",
+      "scenes": [
+        {"id":"gap_truong_lao","title":"Trước Sơn Môn","npc":"Trưởng Lão","kind":"story","text":"Trưởng lão áo trắng hỏi bạn từ đâu đến và vì sao muốn nhập môn.","prompt":"Mở đầu bằng lời chào kính trọng.","lesson":"您好 (nín hǎo) là cách chào lịch sự, dùng 您 thay cho 你.","options":[{"id":"formal","label":"您好，长老！","correct":true,"feedback":"Trưởng lão khẽ gật đầu trước lễ nghi của bạn."},{"id":"casualbye","label":"再见，长老！","correct":false,"feedback":"Bạn vừa đến, chưa nên nói tạm biệt. Hãy dùng 您好。"}]},
+        {"id":"den_tu_dau","title":"Lai lịch","npc":"Trưởng Lão","kind":"question","text":"Trưởng lão hỏi: 你从哪里来？","prompt":"Ông ấy hỏi điều gì?","lesson":"从…来 — đến từ…; 哪里 — đâu.","options":[{"id":"from","label":"Bạn đến từ đâu?","correct":true,"feedback":"Đúng. Có thể đáp: 我从越南来。"},{"id":"go","label":"Bạn muốn đi đâu?","correct":false,"feedback":"Muốn đi đâu là 你想去哪里？"},{"id":"buy","label":"Bạn muốn mua gì?","correct":false,"feedback":"Muốn mua gì là 你想买什么？"}]},
+        {"id":"dap_lai","title":"Lời đáp","npc":"Trưởng Lão","kind":"question","text":"Hãy trả lời rằng bạn đến từ Việt Nam.","prompt":"Chọn câu đúng.","lesson":"我从越南来 — Tôi đến từ Việt Nam.","options":[{"id":"vietnam","label":"我从越南来。","correct":true,"feedback":"Cấu trúc hoàn chỉnh: chủ ngữ + 从 + nơi chốn + 来。"},{"id":"china","label":"我去中国。","correct":false,"feedback":"Câu này nghĩa là Tôi đi Trung Quốc."},{"id":"name","label":"我叫越南。","correct":false,"feedback":"Câu này biến Việt Nam thành tên của bạn."}]},
+        {"id":"tong_hop","title":"Khảo nghiệm tổng hợp","npc":"Trưởng Lão","kind":"question","text":"Một đồng môn hỏi giá ba chén trà: 三杯茶多少钱？","prompt":"Từ 杯 đóng vai trò gì?","lesson":"杯 (bēi) là lượng từ cho cốc/chén; 三杯茶 là ba chén trà.","options":[{"id":"measure","label":"Lượng từ cho cốc/chén","correct":true,"feedback":"Chính xác. Tiếng Trung thường cần lượng từ giữa số và danh từ."},{"id":"money","label":"Đơn vị tiền","correct":false,"feedback":"Đơn vị tiền khẩu ngữ thường là 块。"},{"id":"verb","label":"Động từ “mua”","correct":false,"feedback":"Động từ mua là 买。"}]},
+        {"id":"nhap_mon","title":"Cửa Sơn Môn rộng mở","npc":"Trưởng Lão","kind":"story","text":"Ba hồi chuông vang qua vách núi. Trưởng lão trao cho bạn lệnh bài nhập môn.","prompt":"Đáp lại lời chúc mừng một cách phù hợp.","lesson":"谢谢师父 — Cảm ơn sư phụ.","options":[{"id":"masterthanks","label":"谢谢师父！","correct":true,"feedback":"Hành trình MVP đã hoàn thành. Sơn môn từ đây là nhà của bạn."},{"id":"priceagain","label":"这个多少钱？","correct":false,"feedback":"Đây không phải lúc hỏi giá. Hãy cảm ơn sư phụ."}]}
+      ]
+    }
+  ]
+}

@@ -26,4 +26,5 @@ export const progressTables = [
   'mountain_players','mountain_rounds','mountain_answers','pve_runs','pve_players','pve_rounds','pve_answers',
   'sects','sect_members','sect_join_requests','sect_contribution_ledger','sect_contribution_claims','sect_quests',
   'sect_quest_progress','sect_quest_events','guild_cultivation_leaderboard_config',
+  'adventure_progress','adventure_answers','adventure_chapter_completions',
 ] as const;

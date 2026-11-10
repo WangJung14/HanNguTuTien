@@ -1,0 +1,6 @@
+import { MessageFlags,SlashCommandBuilder,type ChatInputCommandInteraction } from 'discord.js';
+import type { AdventureService } from '../application/adventure.service.js';
+import { adventureScene,adventureSummary } from './adventure-ui.js';
+
+export const gianghoDefinition=new SlashCommandBuilder().setName('giangho').setDescription('🗺️ Bắt đầu hoặc tiếp tục Giang Hồ Kỳ Ngộ').addIntegerOption(o=>o.setName('chuong').setDescription('Chơi lại hoặc vào chương đã mở khóa').addChoices({name:'1 · Sơ Nhập Giang Hồ',value:1},{name:'2 · Thanh Vân Trấn',value:2},{name:'3 · Thí Luyện Sơn Môn',value:3}));
+export async function handleGiangho(i:ChatInputCommandInteraction,s:AdventureService){if(!i.guildId){await i.reply({content:'Dùng lệnh trong server.',flags:MessageFlags.Ephemeral});return;}await i.deferReply({flags:MessageFlags.Ephemeral});const chapter=i.options.getInteger('chuong');const state=chapter?await s.startChapter(i.guildId,i.user.id,chapter):await s.state(i.guildId,i.user.id);const payload=adventureScene(state.progress,state.chapter,state.scene,i.user.id);await i.editReply({content:'',...payload,embeds:[adventureSummary(state.progress,s.content.pack.chapters,state.completions),...payload.embeds]});}
