@@ -11,8 +11,18 @@ const path = `backups/supabase-${stamp}.json.gz`;
 const pg = openPostgres();
 try {
   const data: Record<string, unknown[]> = {};
-  for (const table of progressTables) data[table] = await pg.unsafe(`SELECT * FROM "${table}"`);
-  await pipeline(Readable.from([JSON.stringify({ createdAt: new Date().toISOString(), schemaVersion: 1, tables: data })]), createGzip({ level: 9 }), createWriteStream(path));
+  const existingRows = await pg<{ tableName: string }[]>`
+    SELECT table_name AS "tableName" FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name IN ${pg([...progressTables])}
+  `;
+  const existing = new Set(existingRows.map((row) => row.tableName));
+  for (const table of progressTables) {
+    if (existing.has(table)) data[table] = await pg.unsafe(`SELECT * FROM "${table}"`);
+  }
+  const [migration] = await pg<{ version: number }[]>`
+    SELECT COALESCE(MAX(version), 0)::int AS version FROM app_schema_migrations
+  `;
+  await pipeline(Readable.from([JSON.stringify({ createdAt: new Date().toISOString(), schemaVersion: migration?.version ?? 0, tables: data })]), createGzip({ level: 9 }), createWriteStream(path));
   console.log(`Backup written to ${path}. Store it outside this machine and outside Supabase.`);
 } finally { await pg.end({ timeout: 5 }); }
 
