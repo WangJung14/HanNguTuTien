@@ -1,11 +1,11 @@
 import type Database from 'better-sqlite3';
 import {scoreAnswer} from '../domain/score-rules.js';
-import type {MountainAnswer,MountainMatch,MountainPlayer,MountainQuestion,MountainRound} from '../domain/mountain.types.js';
+import type {MountainAnswer,MountainMatch,MountainPlayer,MountainQuestion,MountainRound,MountainRepository} from '../domain/mountain.types.js';
 const MS=`SELECT id,guild_id AS guildId,channel_id AS channelId,owner_id AS ownerId,kind,deck_id AS deckId,deck_name AS deckName,status,current_round AS currentRound,message_id AS messageId,round_started_at AS roundStartedAt,round_deadline AS roundDeadline,created_at AS createdAt,updated_at AS updatedAt FROM mountain_matches`;
 const PS=`SELECT match_id AS matchId,user_id AS userId,display_name AS displayName,score,correct_count AS correctCount,total_time_ms AS totalTimeMs,completed_rounds AS completedRounds,xp_awarded AS xpAwarded,reward_date AS rewardDate,joined_at AS joinedAt FROM mountain_players`;
 type RR={matchId:string;roundIndex:number;questionJson:string;openedAt:string|null;deadline:string|null;closedAt:string|null};
 function round(r:RR):MountainRound{const{questionJson,...rest}=r;return{...rest,question:JSON.parse(questionJson) as MountainQuestion};}
-export class SqliteMountainRepository{constructor(readonly sqlite:Database.Database){}
+export class SqliteMountainRepository implements MountainRepository{constructor(readonly sqlite:Database.Database){}
  create(match:MountainMatch,questions:MountainQuestion[],displayName:string){this.sqlite.transaction(()=>{if(this.findPlayerActive(match.guildId,match.ownerId))throw new Error('UNIQUE constraint failed: active mountain player');this.sqlite.prepare(`INSERT INTO mountain_matches(id,guild_id,channel_id,owner_id,kind,deck_id,deck_name,status,current_round,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,0,?,?)`).run(match.id,match.guildId,match.channelId,match.ownerId,match.kind,match.deckId,match.deckName,match.status,match.createdAt,match.updatedAt);this.sqlite.prepare(`INSERT INTO mountain_players(match_id,user_id,display_name,joined_at) VALUES(?,?,?,?)`).run(match.id,match.ownerId,displayName,match.createdAt);const q=this.sqlite.prepare(`INSERT INTO mountain_rounds(match_id,round_index,question_json) VALUES(?,?,?)`);questions.forEach((x,i)=>q.run(match.id,i,JSON.stringify(x)));})();}
  get(id:string):MountainMatch|null{return this.sqlite.prepare(`${MS} WHERE id=?`).get(id) as MountainMatch|undefined??null;}
  findChannel(guildId:string,channelId:string):MountainMatch|null{return this.sqlite.prepare(`${MS} WHERE guild_id=? AND channel_id=? AND kind='multi' AND status IN('WAITING','ACTIVE')`).get(guildId,channelId) as MountainMatch|undefined??null;}

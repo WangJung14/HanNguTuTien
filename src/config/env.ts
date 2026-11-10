@@ -17,6 +17,12 @@ export function getProgressPath(): string {
   return resolve(process.env.PROGRESS_DB_PATH || './data/progress.sqlite');
 }
 
+export function getDatabaseProvider(): 'sqlite' | 'postgres' {
+  const provider = (process.env.DATABASE_PROVIDER || 'sqlite').trim().toLowerCase();
+  if (provider === 'sqlite' || provider === 'postgres') return provider;
+  throw new Error('DATABASE_PROVIDER must be either "sqlite" or "postgres".');
+}
+
 export function getDiscordConfig() {
   return {
     token: required('DISCORD_TOKEN'),

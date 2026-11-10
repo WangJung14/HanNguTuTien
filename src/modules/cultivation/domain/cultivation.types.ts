@@ -25,25 +25,27 @@ export type BreakthroughAttempt = {
 };
 export type XpAward = { awarded: number; duplicate: boolean; capped: boolean; totalXp: number };
 
+export type Awaitable<T> = T | Promise<T>;
+
 export interface CultivationRepository {
-  getOrCreateProfile(guildId: string, userId: string, now: string): CultivationProfile;
+  getOrCreateProfile(guildId: string, userId: string, now: string): Awaitable<CultivationProfile>;
   addXp(guildId: string, userId: string, amount: number, source: string, rewardKey: string,
     sessionId: string | null, earnedDate: string, now: string, dailyCap: number,
-    limits?: { scopedDailyCap?: number; scopedSources?: string[]; maxTotalXp?: number }): XpAward;
-  listLedger(guildId: string, userId: string, limit: number): XpLedgerEntry[];
-  getAttempt(id: string): BreakthroughAttempt | null;
-  findActiveAttempt(guildId: string, userId: string): BreakthroughAttempt | null;
-  latestFailedAttempt(guildId: string, userId: string): BreakthroughAttempt | null;
-  createAttempt(attempt: BreakthroughAttempt): void;
-  bindAttemptMessage(id: string, messageId: string, now: string): boolean;
-  answerAttempt(id: string, index: number, answer: string, correct: boolean, now: string): BreakthroughAttempt | null;
-  advanceAttempt(id: string, index: number, now: string, cooldownUntil: string): BreakthroughAttempt | null;
-  promote(guildId: string, userId: string, expectedMajor: number, newMajor: number, now: string): boolean;
-  setRoleSyncPending(guildId: string, userId: string, pending: boolean, now: string): void;
-  setRealmRole(guildId: string, majorIndex: number, roleId: string, now: string): void;
-  removeRealmRole(guildId: string, majorIndex: number): void;
-  getRealmRoles(guildId: string): Map<number, string>;
-  listAttempts(guildId: string, userId: string, limit: number): BreakthroughAttempt[];
+    limits?: { scopedDailyCap?: number; scopedSources?: string[]; maxTotalXp?: number }): Awaitable<XpAward>;
+  listLedger(guildId: string, userId: string, limit: number): Awaitable<XpLedgerEntry[]>;
+  getAttempt(id: string): Awaitable<BreakthroughAttempt | null>;
+  findActiveAttempt(guildId: string, userId: string): Awaitable<BreakthroughAttempt | null>;
+  latestFailedAttempt(guildId: string, userId: string): Awaitable<BreakthroughAttempt | null>;
+  createAttempt(attempt: BreakthroughAttempt): Awaitable<void>;
+  bindAttemptMessage(id: string, messageId: string, now: string): Awaitable<boolean>;
+  answerAttempt(id: string, index: number, answer: string, correct: boolean, now: string): Awaitable<BreakthroughAttempt | null>;
+  advanceAttempt(id: string, index: number, now: string, cooldownUntil: string): Awaitable<BreakthroughAttempt | null>;
+  promote(guildId: string, userId: string, expectedMajor: number, newMajor: number, now: string): Awaitable<boolean>;
+  setRoleSyncPending(guildId: string, userId: string, pending: boolean, now: string): Awaitable<void>;
+  setRealmRole(guildId: string, majorIndex: number, roleId: string, now: string): Awaitable<void>;
+  removeRealmRole(guildId: string, majorIndex: number): Awaitable<void>;
+  getRealmRoles(guildId: string): Awaitable<Map<number, string>>;
+  listAttempts(guildId: string, userId: string, limit: number): Awaitable<BreakthroughAttempt[]>;
 }
 
 export class CultivationError extends Error {

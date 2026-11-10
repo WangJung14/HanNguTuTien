@@ -31,7 +31,7 @@ const dictionaryRepository: DictionaryRepository = {
   findVietnamese: () => [],
 };
 
-function setup() {
+async function setup() {
   const sqlite = new Database(':memory:');
   sqlite.pragma('foreign_keys = ON');
   applyProgressMigrations(sqlite);
@@ -43,8 +43,8 @@ function setup() {
   const dictationRepository = new SqliteDictationRepository(sqlite);
   const audio = { synthesize: async () => ({ data: Buffer.from('wav'), format: 'wav' as const }) };
   const service = new DictationService(dictationRepository, decks, dictionary, audio);
-  const deck = decks.create('guild-1', 'user-1', 'Từ căn bản');
-  for (const word of words.slice(0, 6)) decks.add('guild-1', 'user-1', deck.id, word.id);
+  const deck = await decks.create('guild-1', 'user-1', 'Từ căn bản');
+  for (const word of words.slice(0, 6)) await decks.add('guild-1', 'user-1', deck.id, word.id);
   return { sqlite, dictionary, decks, deck, dictationRepository, service };
 }
 
@@ -74,51 +74,51 @@ describe('Dictation question selection', () => {
 
 describe('Dictation sessions and persisted results', () => {
   it('scopes sessions to their owner and guild and saves the answer across repository instances', async () => {
-    const { sqlite, deck, service } = setup();
+    const { sqlite, deck, service } = await setup();
     const { session } = await service.start('guild-1', 'user-1', deck.id, 5, 'channel-1', () => 0);
-    expect(() => service.getOwnedSession(session.id, 'guild-1', 'user-2')).toThrow('Không tìm thấy');
-    expect(() => service.getOwnedSession(session.id, 'guild-2', 'user-1')).toThrow('Không tìm thấy');
+    await expect(service.getOwnedSession(session.id, 'guild-1', 'user-2')).rejects.toThrow('Không tìm thấy');
+    await expect(service.getOwnedSession(session.id, 'guild-2', 'user-1')).rejects.toThrow('Không tìm thấy');
 
-    const storedSession = service.getOwnedSession(session.id, 'guild-1', 'user-1');
-    const question = service.getCurrentQuestion(storedSession);
-    const saved = service.submitAnswer(storedSession, 0, question.simplified);
+    const storedSession = await service.getOwnedSession(session.id, 'guild-1', 'user-1');
+    const question = await service.getCurrentQuestion(storedSession);
+    const saved = await service.submitAnswer(storedSession, 0, question.simplified);
     expect(saved.isCorrect).toBe(true);
 
     const restartedRepository = new SqliteDictationRepository(sqlite);
-    expect(restartedRepository.findQuestions(session.id)[0]?.answer).toBe(question.simplified);
-    expect(restartedRepository.findQuestions(session.id)[0]?.isCorrect).toBe(true);
+    expect((await restartedRepository.findQuestions(session.id))[0]?.answer).toBe(question.simplified);
+    expect((await restartedRepository.findQuestions(session.id))[0]?.isCorrect).toBe(true);
     sqlite.close();
   });
 
   it('rejects duplicate submissions for the same question', async () => {
-    const { sqlite, deck, service, dictationRepository } = setup();
+    const { sqlite, deck, service, dictationRepository } = await setup();
     const { session } = await service.start('guild-1', 'user-1', deck.id, 5, 'channel-1', () => 0);
-    const current = service.getOwnedSession(session.id, 'guild-1', 'user-1');
-    const answer = service.getCurrentQuestion(current).simplified;
-    service.submitAnswer(current, 0, answer);
-    expect(() => service.submitAnswer(current, 0, answer)).toThrow('đã được chấm');
+    const current = await service.getOwnedSession(session.id, 'guild-1', 'user-1');
+    const answer = (await service.getCurrentQuestion(current)).simplified;
+    await service.submitAnswer(current, 0, answer);
+    await expect(service.submitAnswer(current, 0, answer)).rejects.toThrow('đã được chấm');
     const now = new Date().toISOString();
-    expect(dictationRepository.submitAnswer(
+    expect(await dictationRepository.submitAnswer(
       session.id, 0, answer, true, now, new Date(Date.now() + 60_000).toISOString(),
     )).toBe(false);
     sqlite.close();
   });
 
   it('expires stale sessions and releases the one-active-session constraint', async () => {
-    const { sqlite, deck, service, dictationRepository } = setup();
+    const { sqlite, deck, service, dictationRepository } = await setup();
     const { session } = await service.start('guild-1', 'user-1', deck.id, 5, 'channel-1', () => 0);
     sqlite.prepare(`UPDATE dictation_sessions SET expires_at = ? WHERE id = ?`)
       .run('2000-01-01T00:00:00.000Z', session.id);
-    expect(service.getActiveSession('guild-1', 'user-1')).toBeNull();
-    expect(dictationRepository.findSession(session.id)?.status).toBe('expired');
-    expect(() => service.getOwnedSession(session.id, 'guild-1', 'user-1')).toThrow('hết hạn');
+    expect(await service.getActiveSession('guild-1', 'user-1')).toBeNull();
+    expect((await dictationRepository.findSession(session.id))?.status).toBe('expired');
+    await expect(service.getOwnedSession(session.id, 'guild-1', 'user-1')).rejects.toThrow('hết hạn');
     const replacement = await service.start('guild-1', 'user-1', deck.id, 5, 'channel-1', () => 0);
     expect(replacement.session.status).toBe('active');
     sqlite.close();
   });
 
   it('does not create a session when first-question audio generation fails', async () => {
-    const { sqlite, dictionary, decks, deck } = setup();
+    const { sqlite, dictionary, decks, deck } = await setup();
     const repository = new SqliteDictationRepository(sqlite);
     const audio = {
       synthesize: async () => {
@@ -128,22 +128,22 @@ describe('Dictation sessions and persisted results', () => {
     const service = new DictationService(repository, decks, dictionary, audio);
     await expect(service.start('guild-1', 'user-1', deck.id, 5, 'channel-1')).rejects
       .toThrow('Audio is unavailable.');
-    expect(service.getActiveSession('guild-1', 'user-1')).toBeNull();
+    expect(await service.getActiveSession('guild-1', 'user-1')).toBeNull();
     sqlite.close();
   });
 
   it('advances paper mode without a Discord answer and reveals only words reached so far', async () => {
-    const { sqlite, deck, service, dictationRepository } = setup();
+    const { sqlite, deck, service, dictationRepository } = await setup();
     const { session } = await service.start(
       'guild-1', 'user-1', deck.id, 5, 'channel-1', () => 0, 'paper',
     );
     expect(session.mode).toBe('paper');
-    expect(service.getReadQuestions(session)).toHaveLength(1);
+    expect(await service.getReadQuestions(session)).toHaveLength(1);
 
     const advanced = await service.advance(session, 0);
     expect(advanced.session.currentIndex).toBe(1);
-    expect(service.getReadQuestions(advanced.session)).toHaveLength(2);
-    expect(dictationRepository.findQuestions(session.id)[0]?.answer).toBeNull();
+    expect(await service.getReadQuestions(advanced.session)).toHaveLength(2);
+    expect((await dictationRepository.findQuestions(session.id))[0]?.answer).toBeNull();
     sqlite.close();
   });
 

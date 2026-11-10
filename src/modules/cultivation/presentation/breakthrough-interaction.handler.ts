@@ -12,7 +12,7 @@ export async function handleCultivationButton(interaction: ButtonInteraction, se
   const [, action, id, rawIndex] = interaction.customId.split(':');
   const index = Number(rawIndex);
   if (!interaction.guildId || !id || !Number.isSafeInteger(index)) throw new CultivationError('Nút Thiên Kiếp không hợp lệ.');
-  const value = service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
+  const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
   if (value.currentIndex !== index) throw new CultivationError('Câu Thiên Kiếp này đã cũ.');
   if (action === 'answer') {
     const modal = new ModalBuilder().setCustomId(`cultivation:submit:${id}:${index}`).setTitle(`Thiên Kiếp ${index + 1}/10`)
@@ -45,8 +45,8 @@ export async function handleCultivationModal(interaction: ModalSubmitInteraction
   const [, action, id, rawIndex] = interaction.customId.split(':');
   const index = Number(rawIndex);
   if (action !== 'submit' || !interaction.guildId || !id || !interaction.message || !Number.isSafeInteger(index)) throw new CultivationError('Form Thiên Kiếp không hợp lệ.');
-  const value = service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
+  const value = await service.getOwned(id, interaction.guildId, interaction.user.id, interaction.message.id);
   if (value.currentIndex !== index) throw new CultivationError('Câu Thiên Kiếp này đã cũ.');
   await interaction.deferUpdate();
-  await interaction.editReply(buildBreakthroughAnswered(service.answer(value, interaction.fields.getTextInputValue('answer'))));
+  await interaction.editReply(buildBreakthroughAnswered(await service.answer(value, interaction.fields.getTextInputValue('answer'))));
 }

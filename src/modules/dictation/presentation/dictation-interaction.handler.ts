@@ -35,7 +35,7 @@ export async function handleDictationSelect(
 
   if (action === 'deck') {
     const mode = rawDeckOrMode === 'paper' ? 'paper' : 'discord';
-    const candidates = service.getEligibleQuestions(interaction.guildId, interaction.user.id, value);
+    const candidates = await service.getEligibleQuestions(interaction.guildId, interaction.user.id, value);
     if (candidates.length < 5) {
       await interaction.editReply({
         content: `Bộ này chỉ có **${candidates.length}** từ đủ điều kiện; cần ít nhất 5. Hãy bổ sung từ hoặc chọn bộ khác.`,
@@ -62,7 +62,7 @@ export async function handleDictationSelect(
     Math.random, rawMode === 'paper' ? 'paper' : 'discord',
   );
   const response = await interaction.editReply(buildQuestionMessage(session, question, audio));
-  service.bindMessage(session.id, response.id);
+  await service.bindMessage(session.id, response.id);
 }
 
 export async function handleDictationButton(
@@ -76,15 +76,15 @@ export async function handleDictationButton(
     await interaction.reply({ content: 'Nút này không hợp lệ hoặc đã hết hạn.', flags: MessageFlags.Ephemeral });
     return;
   }
-  const session = service.getOwnedSession(
+  const session = await service.getOwnedSession(
     sessionId, interaction.guildId, interaction.user.id, interaction.message.id,
   );
-  const question = service.getCurrentQuestion(session, questionIndex);
+  const question = await service.getCurrentQuestion(session, questionIndex);
 
   if (action === 'reveal') {
     if (session.mode !== 'paper') throw new DictationError('Nút này chỉ dùng trong chế độ viết giấy.');
     await interaction.reply({
-      content: buildReadAnswers(service.getReadQuestions(session)),
+      content: buildReadAnswers(await service.getReadQuestions(session)),
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -110,7 +110,7 @@ export async function handleDictationButton(
   await interaction.deferUpdate();
   if (action === 'hint') {
     if (session.mode === 'paper') throw new DictationError('Chế độ viết giấy không có gợi ý.');
-    const updatedQuestion = service.markHint(session, questionIndex);
+    const updatedQuestion = await service.markHint(session, questionIndex);
     await interaction.editReply(buildQuestionMessage(session, updatedQuestion));
     return;
   }
@@ -141,9 +141,9 @@ export async function handleDictationButton(
       return;
     }
     if (advanced.session.status === 'completed') {
-      const results = service.getResults(session.id);
+      const results = await service.getResults(session.id);
       if (session.mode === 'discord' && xp) {
-        xp.awardCompletion(session.guildId, session.userId, session.id, session.questionCount,
+        await xp.awardCompletion(session.guildId, session.userId, session.id, session.questionCount,
           results.filter((item) => item.isCorrect).length,
           results.every((item) => item.isCorrect && !item.usedHint && item.replayCount === 0));
       }
@@ -171,7 +171,7 @@ export async function handleDictationModal(
     await interaction.reply({ content: 'Form trả lời không hợp lệ hoặc đã hết hạn.', flags: MessageFlags.Ephemeral });
     return;
   }
-  const session = service.getOwnedSession(
+  const session = await service.getOwnedSession(
     sessionId, interaction.guildId, interaction.user.id, interaction.message.id,
   );
   if (session.mode === 'paper') {
@@ -179,7 +179,7 @@ export async function handleDictationModal(
   }
   await interaction.deferUpdate();
   const answer = interaction.fields.getTextInputValue('answer');
-  const result = service.submitAnswer(session, questionIndex, answer);
-  xp?.awardQuestion(session.guildId, session.userId, result);
+  const result = await service.submitAnswer(session, questionIndex, answer);
+  await xp?.awardQuestion(session.guildId, session.userId, result);
   await interaction.editReply(buildAnsweredMessage(session, result));
 }

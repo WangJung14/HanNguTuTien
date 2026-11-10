@@ -36,50 +36,50 @@ export class DeckService {
     private readonly dictionary: DictionaryService,
   ) {}
 
-  listOwned(guildId: string, userId: string): Deck[] {
+  async listOwned(guildId: string, userId: string): Promise<Deck[]> {
     return this.repository.listOwned(guildId, userId);
   }
 
-  listPublic(guildId: string): Deck[] {
+  async listPublic(guildId: string): Promise<Deck[]> {
     return this.repository.listPublic(guildId, 15);
   }
 
-  create(guildId: string, userId: string, rawName: string, rawDescription = ''): Deck {
-    if (this.listOwned(guildId, userId).length >= 25) {
+  async create(guildId: string, userId: string, rawName: string, rawDescription = ''): Promise<Deck> {
+    if ((await this.listOwned(guildId, userId)).length >= 25) {
       throw new DeckError('Bạn đã có tối đa 25 bộ từ trong server này.');
     }
     const { name, key } = validName(rawName);
     const description = validDescription(rawDescription);
     try {
-      return this.repository.create({ guildId, ownerId: userId, name, nameKey: key, description });
+      return await this.repository.create({ guildId, ownerId: userId, name, nameKey: key, description });
     } catch (error) {
       if (isUniqueError(error)) throw new DeckError('Bạn đã có một bộ từ cùng tên trong server này.');
       throw error;
     }
   }
 
-  getVisible(guildId: string, userId: string, deckId: number): Deck {
-    const deck = this.repository.get(guildId, validId(deckId));
+  async getVisible(guildId: string, userId: string, deckId: number): Promise<Deck> {
+    const deck = await this.repository.get(guildId, validId(deckId));
     if (!deck || (!deck.isPublic && deck.ownerId !== userId)) {
       throw new DeckError('Không tìm thấy bộ từ hoặc bộ này đang ở chế độ riêng tư.');
     }
     return deck;
   }
 
-  private getOwned(guildId: string, userId: string, deckId: number): Deck {
-    const deck = this.repository.get(guildId, validId(deckId));
+  private async getOwned(guildId: string, userId: string, deckId: number): Promise<Deck> {
+    const deck = await this.repository.get(guildId, validId(deckId));
     if (!deck || deck.ownerId !== userId) {
       throw new DeckError('Không tìm thấy bộ từ thuộc quyền sở hữu của bạn.');
     }
     return deck;
   }
 
-  view(guildId: string, userId: string, deckId: number, requestedPage = 1): DeckView {
-    const deck = this.getVisible(guildId, userId, deckId);
+  async view(guildId: string, userId: string, deckId: number, requestedPage = 1): Promise<DeckView> {
+    const deck = await this.getVisible(guildId, userId, deckId);
     const totalPages = Math.max(1, Math.ceil(deck.wordCount / DeckService.PAGE_SIZE));
     const page = Number.isSafeInteger(requestedPage)
       ? Math.max(1, Math.min(requestedPage, totalPages)) : 1;
-    const words = this.repository.listWords(deck.id, DeckService.PAGE_SIZE, (page - 1) * DeckService.PAGE_SIZE);
+    const words = await this.repository.listWords(deck.id, DeckService.PAGE_SIZE, (page - 1) * DeckService.PAGE_SIZE);
     const items = words.flatMap((w) => {
       const entry = this.dictionary.getById(w.entryId);
       return entry ? [{ entry, addedAt: w.addedAt }] : [];
@@ -87,49 +87,49 @@ export class DeckService {
     return { deck, items, page, totalPages };
   }
 
-  add(guildId: string, userId: string, deckId: number, entryId: number): boolean {
-    this.getOwned(guildId, userId, deckId);
+  async add(guildId: string, userId: string, deckId: number, entryId: number): Promise<boolean> {
+    await this.getOwned(guildId, userId, deckId);
     if (!this.dictionary.getById(validId(entryId))) {
       throw new DeckError('Không tìm thấy mã từ trong CVDICT. Hãy dùng /tudien để tra lại.');
     }
     return this.repository.addWord(guildId, userId, deckId, entryId);
   }
 
-  remove(guildId: string, userId: string, deckId: number, entryId: number): boolean {
-    this.getOwned(guildId, userId, deckId);
+  async remove(guildId: string, userId: string, deckId: number, entryId: number): Promise<boolean> {
+    await this.getOwned(guildId, userId, deckId);
     return this.repository.removeWord(deckId, validId(entryId));
   }
 
-  move(guildId: string, userId: string, from: number, to: number, entryId: number): boolean {
-    this.getOwned(guildId, userId, from);
-    this.getOwned(guildId, userId, to);
+  async move(guildId: string, userId: string, from: number, to: number, entryId: number): Promise<boolean> {
+    await this.getOwned(guildId, userId, from);
+    await this.getOwned(guildId, userId, to);
     if (from === to) throw new DeckError('Bộ nguồn và bộ đích phải khác nhau.');
     return this.repository.moveWord(from, to, validId(entryId));
   }
 
-  visibility(guildId: string, userId: string, deckId: number, enabled: boolean): Deck {
-    this.getOwned(guildId, userId, deckId);
+  async visibility(guildId: string, userId: string, deckId: number, enabled: boolean): Promise<Deck> {
+    await this.getOwned(guildId, userId, deckId);
     return this.repository.setPublic(guildId, userId, deckId, enabled);
   }
 
-  copy(guildId: string, userId: string, sourceDeckId: number, targetName?: string): Deck {
-    const source = this.getVisible(guildId, userId, sourceDeckId);
+  async copy(guildId: string, userId: string, sourceDeckId: number, targetName?: string): Promise<Deck> {
+    const source = await this.getVisible(guildId, userId, sourceDeckId);
     const defaultName = `${[...source.name].slice(0, 29).join('')} (bản sao)`;
     const { name, key } = validName(targetName || defaultName);
     try {
-      return this.repository.copy(guildId, userId, source.id, name, key);
+      return await this.repository.copy(guildId, userId, source.id, name, key);
     } catch (error) {
       if (isUniqueError(error)) throw new DeckError('Tên bộ từ đã tồn tại. Hãy nhập tên khác khi sao chép.');
       throw error;
     }
   }
 
-  delete(guildId: string, userId: string, deckId: number): boolean {
-    this.getOwned(guildId, userId, deckId);
+  async delete(guildId: string, userId: string, deckId: number): Promise<boolean> {
+    await this.getOwned(guildId, userId, deckId);
     return this.repository.delete(guildId, userId, deckId);
   }
 }
 
 function isUniqueError(error: unknown): boolean {
-  return error instanceof Error && /UNIQUE constraint failed/u.test(error.message);
+  return error instanceof Error && /(UNIQUE constraint failed|duplicate key value)/u.test(error.message);
 }

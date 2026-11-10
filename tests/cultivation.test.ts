@@ -36,70 +36,70 @@ function fakeDictation(): DictationService {
 }
 
 describe('Cultivation XP', () => {
-  it('scores actual dictation outcomes and prevents duplicate rewards', () => {
+  it('scores actual dictation outcomes and prevents duplicate rewards', async () => {
     const { sqlite, xp } = setup();
-    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 }).awarded).toBe(10);
-    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 1, isCorrect: true, usedHint: false, replayCount: 1 }).awarded).toBe(7);
-    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 2, isCorrect: true, usedHint: true, replayCount: 0 }).awarded).toBe(4);
-    expect(xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 }).duplicate).toBe(true);
-    expect(xp.awardCompletion('g', 'u', 's', 10, 10, true).map((x) => x.awarded)).toEqual([20, 30]);
+    expect((await xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 })).awarded).toBe(10);
+    expect((await xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 1, isCorrect: true, usedHint: false, replayCount: 1 })).awarded).toBe(7);
+    expect((await xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 2, isCorrect: true, usedHint: true, replayCount: 0 })).awarded).toBe(4);
+    expect((await xp.awardQuestion('g', 'u', { sessionId: 's', questionIndex: 0, isCorrect: true, usedHint: false, replayCount: 0 })).duplicate).toBe(true);
+    expect((await xp.awardCompletion('g', 'u', 's', 10, 10, true)).map((x) => x.awarded)).toEqual([20, 30]);
     sqlite.close();
   });
 
-  it('caps daily XP, records a zero claim, and stays idempotent under competing calls', () => {
+  it('caps daily XP, records a zero claim, and stays idempotent under competing calls', async () => {
     const { sqlite, repository } = setup();
     const now = '2026-11-10T00:00:00.000Z';
-    const first = repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
-    const second = repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
-    const capped = repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-10', now, 200);
+    const first = await repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
+    const second = await repository.addXp('g', 'u', 250, 'test', 'same-key', null, '2026-11-10', now, 200);
+    const capped = await repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-10', now, 200);
     expect(first).toMatchObject({ awarded: 200, capped: true });
     expect(second).toMatchObject({ awarded: 0, duplicate: true });
     expect(capped).toMatchObject({ awarded: 0, capped: true });
-    expect(repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-11', now, 200).duplicate).toBe(true);
-    expect(repository.getOrCreateProfile('g', 'u', now).totalXp).toBe(200);
+    expect((await repository.addXp('g', 'u', 10, 'test', 'capped-key', null, '2026-11-11', now, 200)).duplicate).toBe(true);
+    expect((await repository.getOrCreateProfile('g', 'u', now)).totalXp).toBe(200);
     sqlite.close();
   });
 });
 
 describe('Realm progression and breakthrough', () => {
-  it('raises minor realms automatically but locks the next major realm', () => {
+  it('raises minor realms automatically but locks the next major realm', async () => {
     const { sqlite, repository, realms } = setup();
-    repository.addXp('g', 'u', 1750, 'seed', 'seed', null, '2026-11-10', new Date().toISOString(), 999999);
-    const locked = realms.getProgress('g', 'u');
+    await repository.addXp('g', 'u', 1750, 'seed', 'seed', null, '2026-11-10', new Date().toISOString(), 999999);
+    const locked = await realms.getProgress('g', 'u');
     expect(locked.major.name).toBe('Phàm Nhân');
     expect(locked.needsBreakthrough).toBe(true);
-    repository.promote('g', 'u', 0, 1, new Date().toISOString());
-    expect(realms.getProgress('g', 'u').label).toContain('tầng 9');
+    await repository.promote('g', 'u', 0, 1, new Date().toISOString());
+    expect((await realms.getProgress('g', 'u')).label).toContain('tầng 9');
     sqlite.close();
   });
 
   it('persists an 8/10 success and promotes atomically', async () => {
     const { sqlite, repository, realms } = setup();
-    repository.addXp('g', 'u', 100, 'seed', 'seed-pass', null, '2026-11-10', new Date().toISOString(), 999999);
+    await repository.addXp('g', 'u', 100, 'seed', 'seed-pass', null, '2026-11-10', new Date().toISOString(), 999999);
     const service = new BreakthroughService(repository, realms, fakeDictation());
     let current = (await service.start('g', 'u', 1, () => 0)).attempt;
     for (let index = 0; index < 10; index += 1) {
-      current = service.answer(current, index < 8 ? current.questions[index]!.simplified : 'sai');
+      current = await service.answer(current, index < 8 ? current.questions[index]!.simplified : 'sai');
       current = (await service.advance(current)).attempt;
     }
     expect(current.status).toBe('passed'); expect(current.correctCount).toBe(8);
-    expect(repository.getOrCreateProfile('g', 'u', new Date().toISOString()).majorIndex).toBe(1);
+    expect((await repository.getOrCreateProfile('g', 'u', new Date().toISOString())).majorIndex).toBe(1);
     const restarted = new SqliteCultivationRepository(sqlite);
-    expect(restarted.getAttempt(current.id)?.status).toBe('passed');
+    expect((await restarted.getAttempt(current.id))?.status).toBe('passed');
     sqlite.close();
   });
 
   it('fails below 8/10 without losing XP and enforces cooldown', async () => {
     const { sqlite, repository, realms } = setup();
-    repository.addXp('g', 'u', 100, 'seed', 'seed-fail', null, '2026-11-10', new Date().toISOString(), 999999);
+    await repository.addXp('g', 'u', 100, 'seed', 'seed-fail', null, '2026-11-10', new Date().toISOString(), 999999);
     const service = new BreakthroughService(repository, realms, fakeDictation());
     let current = (await service.start('g', 'u', 1)).attempt;
     for (let index = 0; index < 10; index += 1) {
-      current = service.answer(current, index < 7 ? current.questions[index]!.simplified : 'sai');
+      current = await service.answer(current, index < 7 ? current.questions[index]!.simplified : 'sai');
       current = (await service.advance(current)).attempt;
     }
     expect(current.status).toBe('failed');
-    expect(repository.getOrCreateProfile('g', 'u', new Date().toISOString())).toMatchObject({ totalXp: 100, majorIndex: 0 });
+    expect(await repository.getOrCreateProfile('g', 'u', new Date().toISOString())).toMatchObject({ totalXp: 100, majorIndex: 0 });
     await expect(service.start('g', 'u', 1)).rejects.toThrow('thử lại');
     sqlite.close();
   });
@@ -108,8 +108,8 @@ describe('Realm progression and breakthrough', () => {
 describe('Cultivation role synchronization', () => {
   it('keeps pending state after Discord failure and clears it on retry', async () => {
     const { sqlite, repository } = setup();
-    const now = new Date().toISOString(); repository.getOrCreateProfile('g', 'u', now);
-    repository.setRealmRole('g', 1, 'role-1', now);
+    const now = new Date().toISOString(); await repository.getOrCreateProfile('g', 'u', now);
+    await repository.setRealmRole('g', 1, 'role-1', now);
     let allowed = false;
     const memberRoles = new Set<string>();
     const role = { id: 'role-1', name: 'Luyện Khí', position: 1 };
@@ -119,10 +119,10 @@ describe('Cultivation role synchronization', () => {
     }, roles: { cache: { get: () => role }, fetch: async () => role } } as unknown as Guild;
     const sync = new DiscordRoleSync(repository);
     expect((await sync.sync(guild, 'u', 1)).synced).toBe(false);
-    expect(repository.getOrCreateProfile('g', 'u', now).roleSyncPending).toBe(true);
+    expect((await repository.getOrCreateProfile('g', 'u', now)).roleSyncPending).toBe(true);
     allowed = true;
     expect((await sync.sync(guild, 'u', 1)).synced).toBe(true);
-    expect(repository.getOrCreateProfile('g', 'u', now).roleSyncPending).toBe(false);
+    expect((await repository.getOrCreateProfile('g', 'u', now)).roleSyncPending).toBe(false);
     expect(memberRoles.has('role-1')).toBe(true);
     sqlite.close();
   });

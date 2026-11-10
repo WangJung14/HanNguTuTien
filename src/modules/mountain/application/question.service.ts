@@ -4,9 +4,9 @@ import {MountainError,type MountainQuestion} from '../domain/mountain.types.js';
 type Candidate={entryId:number;hanzi:string;meaning:string};
 export class MountainQuestionService{
  constructor(private readonly decks:DeckService){}
- build(guildId:string,userId:string,deckId:number,random:()=>number=Math.random):{deckName:string;questions:MountainQuestion[]}{
-  const deck=this.decks.getVisible(guildId,userId,deckId);const first=this.decks.view(guildId,userId,deckId,1);const entries=[...first.items.map(x=>x.entry)];
-  for(let p=2;p<=first.totalPages;p++)entries.push(...this.decks.view(guildId,userId,deckId,p).items.map(x=>x.entry));
+ async build(guildId:string,userId:string,deckId:number,random:()=>number=Math.random):Promise<{deckName:string;questions:MountainQuestion[]}>{
+  const deck=await this.decks.getVisible(guildId,userId,deckId);const first=await this.decks.view(guildId,userId,deckId,1);const entries=[...first.items.map(x=>x.entry)];
+  for(let p=2;p<=first.totalPages;p++)entries.push(...(await this.decks.view(guildId,userId,deckId,p)).items.map(x=>x.entry));
   const raw:Candidate[]=entries.flatMap(entry=>{const meanings=entry.meanings.filter(x=>x.trim()&&!/^LT:/u.test(x)).map(x=>x.normalize('NFC').trim());const unique=[...new Map(meanings.map(x=>[key(x),x])).values()];if(!/^\p{Script=Han}+$/u.test(entry.simplified)||unique.length!==1||!validReading(entry.pinyinRaw))return[];return[{entryId:entry.id,hanzi:entry.simplified,meaning:unique[0]!}];});
   const meaningCounts=new Map<string,number>();const hanCounts=new Map<string,number>();for(const c of raw){meaningCounts.set(key(c.meaning),(meaningCounts.get(key(c.meaning))??0)+1);hanCounts.set(c.hanzi,(hanCounts.get(c.hanzi)??0)+1);}
   const pool=raw.filter(c=>meaningCounts.get(key(c.meaning))===1&&hanCounts.get(c.hanzi)===1);

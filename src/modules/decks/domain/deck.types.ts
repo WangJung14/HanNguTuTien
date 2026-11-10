@@ -34,16 +34,16 @@ export class DeckError extends Error {
 }
 
 export interface DeckRepository {
-  get(guildId: string, deckId: number): Deck | null;
-  listOwned(guildId: string, ownerId: string): Deck[];
-  listPublic(guildId: string, limit: number): Deck[];
-  create(data: NewDeck): Deck;
-  delete(guildId: string, ownerId: string, deckId: number): boolean;
-  setPublic(guildId: string, ownerId: string, deckId: number, enabled: boolean): Deck;
-  addWord(guildId: string, userId: string, deckId: number, entryId: number): boolean;
-  removeWord(deckId: number, entryId: number): boolean;
-  moveWord(sourceDeckId: number, destinationDeckId: number, entryId: number): boolean;
-  hasWord(deckId: number, entryId: number): boolean;
-  listWords(deckId: number, limit: number, offset: number): DeckWord[];
-  copy(guildId: string, ownerId: string, sourceDeckId: number, name: string, nameKey: string): Deck;
+  get(guildId: string, deckId: number): Deck | null | Promise<Deck | null>;
+  listOwned(guildId: string, ownerId: string): Deck[] | Promise<Deck[]>;
+  listPublic(guildId: string, limit: number): Deck[] | Promise<Deck[]>;
+  create(data: NewDeck): Deck | Promise<Deck>;
+  delete(guildId: string, ownerId: string, deckId: number): boolean | Promise<boolean>;
+  setPublic(guildId: string, ownerId: string, deckId: number, enabled: boolean): Deck | Promise<Deck>;
+  addWord(guildId: string, userId: string, deckId: number, entryId: number): boolean | Promise<boolean>;
+  removeWord(deckId: number, entryId: number): boolean | Promise<boolean>;
+  moveWord(sourceDeckId: number, destinationDeckId: number, entryId: number): boolean | Promise<boolean>;
+  hasWord(deckId: number, entryId: number): boolean | Promise<boolean>;
+  listWords(deckId: number, limit: number, offset: number): DeckWord[] | Promise<DeckWord[]>;
+  copy(guildId: string, ownerId: string, sourceDeckId: number, name: string, nameKey: string): Deck | Promise<Deck>;
 }

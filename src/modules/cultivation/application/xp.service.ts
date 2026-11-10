@@ -9,7 +9,7 @@ export type DictationRewardQuestion = {
 export class XpService {
   constructor(private readonly repository: CultivationRepository) {}
 
-  awardQuestion(guildId: string, userId: string, question: DictationRewardQuestion): XpAward {
+  async awardQuestion(guildId: string, userId: string, question: DictationRewardQuestion): Promise<XpAward> {
     if (!question.isCorrect) return this.noAward(guildId, userId);
     const amount = question.usedHint ? XP_CONFIG.correctAfterHint
       : question.replayCount > 0 ? XP_CONFIG.correctAfterReplay : XP_CONFIG.correctFirstTry;
@@ -17,13 +17,13 @@ export class XpService {
       `dictation:${question.sessionId}:question:${question.questionIndex}`, question.sessionId);
   }
 
-  awardCompletion(guildId: string, userId: string, sessionId: string, questionCount: number,
-    correctCount: number, allFirstTry: boolean): XpAward[] {
+  async awardCompletion(guildId: string, userId: string, sessionId: string, questionCount: number,
+    correctCount: number, allFirstTry: boolean): Promise<XpAward[]> {
     const amount = XP_CONFIG.completion[questionCount] ?? 0;
-    const rewards = amount > 0 ? [this.award(guildId, userId, amount, 'dictation_complete',
+    const rewards = amount > 0 ? [await this.award(guildId, userId, amount, 'dictation_complete',
       `dictation:${sessionId}:complete`, sessionId)] : [];
     if (questionCount === 10 && correctCount === 10 && allFirstTry) {
-      rewards.push(this.award(guildId, userId, XP_CONFIG.perfectTenFirstTry, 'dictation_perfect_10',
+      rewards.push(await this.award(guildId, userId, XP_CONFIG.perfectTenFirstTry, 'dictation_perfect_10',
         `dictation:${sessionId}:perfect10`, sessionId));
     }
     return rewards;
@@ -33,8 +33,8 @@ export class XpService {
     return this.repository.listLedger(guildId, userId, limit);
   }
 
-  awardExternal(guildId: string, userId: string, amount: number, source: string, rewardKey: string,
-    options?: { sessionId?: string; scopedDailyCap?: number; scopedSources?: string[]; maxTotalXp?: number; now?: Date }): XpAward {
+  async awardExternal(guildId: string, userId: string, amount: number, source: string, rewardKey: string,
+    options?: { sessionId?: string; scopedDailyCap?: number; scopedSources?: string[]; maxTotalXp?: number; now?: Date }): Promise<XpAward> {
     const now = options?.now ?? new Date();
     return this.repository.addXp(guildId, userId, amount, source, rewardKey, options?.sessionId ?? null,
       vietnamDate(now), now.toISOString(), XP_CONFIG.dailyCap, {
@@ -43,14 +43,14 @@ export class XpService {
       });
   }
 
-  private award(guildId: string, userId: string, amount: number, source: string,
-    rewardKey: string, sessionId: string | null): XpAward {
+  private async award(guildId: string, userId: string, amount: number, source: string,
+    rewardKey: string, sessionId: string | null): Promise<XpAward> {
     const now = new Date();
     return this.repository.addXp(guildId, userId, amount, source, rewardKey, sessionId,
       vietnamDate(now), now.toISOString(), XP_CONFIG.dailyCap);
   }
-  private noAward(guildId: string, userId: string): XpAward {
-    const profile = this.repository.getOrCreateProfile(guildId, userId, new Date().toISOString());
+  private async noAward(guildId: string, userId: string): Promise<XpAward> {
+    const profile = await this.repository.getOrCreateProfile(guildId, userId, new Date().toISOString());
     return { awarded: 0, duplicate: false, capped: false, totalXp: profile.totalXp };
   }
 }

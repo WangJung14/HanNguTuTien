@@ -24,36 +24,36 @@ function createService() {
 }
 
 describe('Túi Càn Khôn', () => {
-  it('migrates progress database and saves a word once', () => {
+  it('migrates progress database and saves a word once', async () => {
     const { service, sqlite } = createService();
-    expect(service.save('guild1', 'user1', 42).created).toBe(true);
-    expect(service.save('guild1', 'user1', 42).created).toBe(false);
-    expect(service.list('guild1', 'user1').total).toBe(1);
+    expect((await service.save('guild1', 'user1', 42)).created).toBe(true);
+    expect((await service.save('guild1', 'user1', 42)).created).toBe(false);
+    expect((await service.list('guild1', 'user1')).total).toBe(1);
     sqlite.close();
   });
 
-  it('isolates words by user and guild', () => {
+  it('isolates words by user and guild', async () => {
     const { service, sqlite } = createService();
-    service.save('guild1', 'user1', 42);
-    expect(service.list('guild1', 'user2').total).toBe(0);
-    expect(service.list('guild2', 'user1').total).toBe(0);
+    await service.save('guild1', 'user1', 42);
+    expect((await service.list('guild1', 'user2')).total).toBe(0);
+    expect((await service.list('guild2', 'user1')).total).toBe(0);
     sqlite.close();
   });
 
-  it('removes own word without touching others', () => {
+  it('removes own word without touching others', async () => {
     const { service, sqlite } = createService();
-    service.save('guild1', 'user1', 42);
-    service.save('guild1', 'user2', 42);
-    expect(service.remove('guild1', 'user1', 42)).toBe(true);
-    expect(service.remove('guild1', 'user1', 42)).toBe(false);
-    expect(service.list('guild1', 'user1').total).toBe(0);
-    expect(service.list('guild1', 'user2').total).toBe(1);
+    await service.save('guild1', 'user1', 42);
+    await service.save('guild1', 'user2', 42);
+    expect(await service.remove('guild1', 'user1', 42)).toBe(true);
+    expect(await service.remove('guild1', 'user1', 42)).toBe(false);
+    expect((await service.list('guild1', 'user1')).total).toBe(0);
+    expect((await service.list('guild1', 'user2')).total).toBe(1);
     sqlite.close();
   });
 
-  it('rejects invalid dictionary entry IDs', () => {
+  it('rejects invalid dictionary entry IDs', async () => {
     const { service, sqlite } = createService();
-    expect(() => service.save('guild1', 'user1', 999)).toThrow();
+    await expect(service.save('guild1', 'user1', 999)).rejects.toThrow();
     sqlite.close();
   });
 });

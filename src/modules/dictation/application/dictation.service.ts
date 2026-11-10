@@ -28,12 +28,12 @@ export class DictationService {
     return this.decks.listOwned(guildId, userId);
   }
 
-  getActiveSession(guildId: string, userId: string): DictationSession | null {
+  async getActiveSession(guildId: string, userId: string): Promise<DictationSession | null> {
     return this.repository.findActive(guildId, userId, nowIso());
   }
 
-  getEligibleQuestions(guildId: string, userId: string, deckId: number): EligibleQuestion[] {
-    return this.loadDeckCandidates(guildId, userId, deckId).candidates;
+  async getEligibleQuestions(guildId: string, userId: string, deckId: number): Promise<EligibleQuestion[]> {
+    return (await this.loadDeckCandidates(guildId, userId, deckId)).candidates;
   }
 
   choosePublicQuestions(candidates: EligibleQuestion[], count: number, random: () => number = Math.random) {
@@ -57,11 +57,11 @@ export class DictationService {
     random: () => number = Math.random,
     mode: DictationMode = 'discord',
   ): Promise<{ session: DictationSession; question: DictationQuestion; audio: SynthesizedAudio }> {
-    if (this.getActiveSession(guildId, userId)) {
+    if (await this.getActiveSession(guildId, userId)) {
       throw new DictationError('Bạn đang có một phiên khảo bài trong server này. Dùng `/khaobai tieptuc` để mở lại.');
     }
 
-    const { deck, candidates } = this.loadDeckCandidates(guildId, userId, deckId);
+    const { deck, candidates } = await this.loadDeckCandidates(guildId, userId, deckId);
     if (![5, 10, 20].includes(count)) throw new DictationError('Số câu phải là 5, 10 hoặc 20.');
     if (count > candidates.length) {
       throw new DictationError(`Bộ này chỉ có ${candidates.length} từ đủ điều kiện; hãy chọn số câu nhỏ hơn.`);
@@ -71,7 +71,7 @@ export class DictationService {
     const now = nowIso();
     let session: DictationSession;
     try {
-      session = this.repository.createSession({
+      session = await this.repository.createSession({
         id: randomUUID(),
         guildId,
         userId,
@@ -88,7 +88,7 @@ export class DictationService {
       }
       throw error;
     }
-    const question = this.repository.findQuestion(session.id, 0);
+    const question = await this.repository.findQuestion(session.id, 0);
     if (!question) throw new Error('First dictation question could not be found.');
     return { session, question, audio: firstAudio };
   }
@@ -97,34 +97,34 @@ export class DictationService {
     guildId: string,
     userId: string,
   ): Promise<{ session: DictationSession; question: DictationQuestion; audio: SynthesizedAudio | null }> {
-    const session = this.getActiveSession(guildId, userId);
+    const session = await this.getActiveSession(guildId, userId);
     if (!session) throw new DictationError('Bạn không có phiên khảo bài đang hoạt động trong server này.');
-    const question = this.repository.findQuestion(session.id, session.currentIndex);
+    const question = await this.repository.findQuestion(session.id, session.currentIndex);
     if (!question) throw new Error('Current dictation question could not be found.');
     const audio = question.answeredAt ? null : await this.audio.synthesize(question.simplified, 'normal');
     return { session, question, audio };
   }
 
-  bindMessage(sessionId: string, messageId: string): void {
+  async bindMessage(sessionId: string, messageId: string): Promise<void> {
     const now = nowIso();
-    if (!this.repository.bindMessage(sessionId, messageId, now, expiresAt(now))) {
+    if (!await this.repository.bindMessage(sessionId, messageId, now, expiresAt(now))) {
       throw new DictationError('Phiên khảo bài đã hết hạn hoặc không còn hoạt động.');
     }
   }
 
-  getOwnedSession(
+  async getOwnedSession(
     sessionId: string,
     guildId: string,
     userId: string,
     messageId?: string,
-  ): DictationSession {
-    const session = this.repository.findSession(sessionId);
+  ): Promise<DictationSession> {
+    const session = await this.repository.findSession(sessionId);
     if (!session || session.guildId !== guildId || session.userId !== userId) {
       throw new DictationError('Không tìm thấy phiên khảo bài của bạn trong server này.');
     }
     const now = nowIso();
     if (session.status === 'active' && session.expiresAt <= now) {
-      this.repository.expire(sessionId, now);
+      await this.repository.expire(sessionId, now);
       throw new DictationError('Phiên khảo bài đã hết hạn. Hãy dùng `/khaobai batdau` để tạo phiên mới.');
     }
     if (session.status !== 'active') {
@@ -138,18 +138,18 @@ export class DictationService {
     return session;
   }
 
-  getCurrentQuestion(session: DictationSession, expectedIndex = session.currentIndex): DictationQuestion {
+  async getCurrentQuestion(session: DictationSession, expectedIndex = session.currentIndex): Promise<DictationQuestion> {
     if (expectedIndex !== session.currentIndex) throw new DictationError('Câu hỏi này đã cũ; hãy dùng các nút trên câu hiện tại.');
-    const question = this.repository.findQuestion(session.id, expectedIndex);
+    const question = await this.repository.findQuestion(session.id, expectedIndex);
     if (!question) throw new Error('Current dictation question could not be found.');
     return question;
   }
 
-  markHint(session: DictationSession, questionIndex: number): DictationQuestion {
-    const question = this.getCurrentQuestion(session, questionIndex);
+  async markHint(session: DictationSession, questionIndex: number): Promise<DictationQuestion> {
+    const question = await this.getCurrentQuestion(session, questionIndex);
     if (question.answeredAt) throw new DictationError('Câu này đã được trả lời.');
     const now = nowIso();
-    if (!this.repository.markHint(session.id, questionIndex, now, expiresAt(now))) {
+    if (!await this.repository.markHint(session.id, questionIndex, now, expiresAt(now))) {
       throw new DictationError('Câu hỏi đã thay đổi hoặc phiên khảo bài đã hết hạn.');
     }
     return this.getCurrentQuestion(session, questionIndex);
@@ -160,22 +160,22 @@ export class DictationService {
     questionIndex: number,
     speed: AudioSpeed,
   ): Promise<{ question: DictationQuestion; audio: SynthesizedAudio }> {
-    const question = this.getCurrentQuestion(session, questionIndex);
+    const question = await this.getCurrentQuestion(session, questionIndex);
     if (question.answeredAt) throw new DictationError('Câu này đã được trả lời.');
     const audio = await this.audio.synthesize(question.simplified, speed);
     const now = nowIso();
-    if (!this.repository.incrementReplay(session.id, questionIndex, now, expiresAt(now))) {
+    if (!await this.repository.incrementReplay(session.id, questionIndex, now, expiresAt(now))) {
       throw new DictationError('Câu hỏi đã thay đổi hoặc phiên khảo bài đã hết hạn.');
     }
-    return { question: this.getCurrentQuestion(session, questionIndex), audio };
+    return { question: await this.getCurrentQuestion(session, questionIndex), audio };
   }
 
-  submitAnswer(session: DictationSession, questionIndex: number, answer: string): DictationQuestion {
-    const question = this.getCurrentQuestion(session, questionIndex);
+  async submitAnswer(session: DictationSession, questionIndex: number, answer: string): Promise<DictationQuestion> {
+    const question = await this.getCurrentQuestion(session, questionIndex);
     if (question.answeredAt) throw new DictationError('Câu này đã được chấm; không thể gửi đáp án lần nữa.');
     const now = nowIso();
     const correct = gradeAnswer(answer, question);
-    if (!this.repository.submitAnswer(
+    if (!await this.repository.submitAnswer(
       session.id, questionIndex, answer, correct, now, expiresAt(now),
     )) {
       throw new DictationError('Đáp án đã được nhận hoặc câu hỏi đã thay đổi. Không ghi nhận submit trùng.');
@@ -187,16 +187,16 @@ export class DictationService {
     session: DictationSession,
     questionIndex: number,
   ): Promise<{ session: DictationSession; question: DictationQuestion | null; audio: SynthesizedAudio | null }> {
-    const current = this.getCurrentQuestion(session, questionIndex);
+    const current = await this.getCurrentQuestion(session, questionIndex);
     if (session.mode === 'discord' && !current.answeredAt) {
       throw new DictationError('Hãy gửi đáp án câu này trước khi chuyển câu.');
     }
     const isLast = questionIndex + 1 >= session.questionCount;
-    const nextQuestion = isLast ? null : this.repository.findQuestion(session.id, questionIndex + 1);
+    const nextQuestion = isLast ? null : await this.repository.findQuestion(session.id, questionIndex + 1);
     if (!isLast && !nextQuestion) throw new Error('Next dictation question could not be found.');
     const audio = nextQuestion ? await this.audio.synthesize(nextQuestion.simplified, 'normal') : null;
     const now = nowIso();
-    const updated = this.repository.advance(session.id, questionIndex, now, expiresAt(now));
+    const updated = await this.repository.advance(session.id, questionIndex, now, expiresAt(now));
     if (!updated) throw new DictationError('Câu hỏi đã được chuyển hoặc phiên khảo bài đã hết hạn.');
     return {
       session: updated,
@@ -205,21 +205,21 @@ export class DictationService {
     };
   }
 
-  getResults(sessionId: string): DictationQuestion[] {
+  async getResults(sessionId: string): Promise<DictationQuestion[]> {
     return this.repository.findQuestions(sessionId);
   }
 
-  getReadQuestions(session: DictationSession): DictationQuestion[] {
-    return this.repository.findQuestions(session.id).slice(0, session.currentIndex + 1);
+  async getReadQuestions(session: DictationSession): Promise<DictationQuestion[]> {
+    return (await this.repository.findQuestions(session.id)).slice(0, session.currentIndex + 1);
   }
 
-  private loadDeckCandidates(guildId: string, userId: string, deckId: number) {
-    const deck = this.decks.getVisible(guildId, userId, deckId);
+  private async loadDeckCandidates(guildId: string, userId: string, deckId: number) {
+    const deck = await this.decks.getVisible(guildId, userId, deckId);
     if (deck.ownerId !== userId) throw new DictationError('Chỉ có thể khảo bài từ bộ từ do chính bạn sở hữu.');
-    const firstPage = this.decks.view(guildId, userId, deckId, 1);
+    const firstPage = await this.decks.view(guildId, userId, deckId, 1);
     const entryIds = firstPage.items.map(({ entry }) => entry.id);
     for (let page = 2; page <= firstPage.totalPages; page += 1) {
-      entryIds.push(...this.decks.view(guildId, userId, deckId, page).items.map(({ entry }) => entry.id));
+      entryIds.push(...(await this.decks.view(guildId, userId, deckId, page)).items.map(({ entry }) => entry.id));
     }
     const entries = entryIds.flatMap((id) => {
       const entry = this.dictionary.getById(id);

@@ -17,7 +17,7 @@ export async function handleDeckButton(interaction: ButtonInteraction, service: 
   }
   if (action === 'pick') {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const decks = service.listOwned(interaction.guildId, interaction.user.id);
+    const decks = await service.listOwned(interaction.guildId, interaction.user.id);
     if (!decks.length) {
       await interaction.editReply('🎒 Chưa có bộ từ. Hãy dùng `/botu tao` để tạo bộ, sau đó tra từ lại nhé.');
       return;
@@ -35,7 +35,7 @@ export async function handleDeckButton(interaction: ButtonInteraction, service: 
   }
   if (action === 'delete') {
     await interaction.deferUpdate();
-    const deleted = service.delete(interaction.guildId, interaction.user.id, entryOrDeckId);
+    const deleted = await service.delete(interaction.guildId, interaction.user.id, entryOrDeckId);
     await interaction.editReply({ content: deleted ? '🗑️ Đã xóa bộ từ. Các từ trong Túi Càn Khôn vẫn còn.' : 'Bộ từ không còn tồn tại.', components: [] });
     return;
   }
@@ -59,7 +59,7 @@ export async function handleDeckSelect(interaction: StringSelectMenuInteraction,
     return;
   }
   await interaction.deferUpdate();
-  const added = service.add(interaction.guildId, interaction.user.id, deckId, entryId);
+  const added = await service.add(interaction.guildId, interaction.user.id, deckId, entryId);
   await interaction.editReply({
     content: added ? `✅ Đã thêm từ #${entryId} vào bộ #${deckId} và Túi Càn Khôn!` : '📦 Từ này đã có trong bộ rồi.',
     components: [],

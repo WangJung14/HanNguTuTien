@@ -12,21 +12,21 @@ export class BagService {
     private readonly dictionary: DictionaryService,
   ) {}
 
-  save(guildId: string, userId: string, entryId: number) {
+  async save(guildId: string, userId: string, entryId: number) {
     const entry = this.dictionary.getById(entryId);
     if (!entry) throw new Error('Không tìm thấy mục từ trong CVDICT.');
-    return { created: this.repository.add(guildId, userId, entryId), entry };
+    return { created: await this.repository.add(guildId, userId, entryId), entry };
   }
 
-  remove(guildId: string, userId: string, entryId: number): boolean {
+  async remove(guildId: string, userId: string, entryId: number): Promise<boolean> {
     return this.repository.remove(guildId, userId, entryId);
   }
 
-  list(guildId: string, userId: string, requestedPage = 1): BagPage {
-    const total = this.repository.count(guildId, userId);
+  async list(guildId: string, userId: string, requestedPage = 1): Promise<BagPage> {
+    const total = await this.repository.count(guildId, userId);
     const totalPages = Math.max(1, Math.ceil(total / BagService.PAGE_SIZE));
     const page = Math.max(1, Math.min(Math.floor(requestedPage), totalPages));
-    const saved = this.repository.list(
+    const saved = await this.repository.list(
       guildId, userId, BagService.PAGE_SIZE, (page - 1) * BagService.PAGE_SIZE,
     );
     const items = saved.flatMap(({ entryId, savedAt }) => {

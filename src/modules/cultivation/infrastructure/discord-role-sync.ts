@@ -7,10 +7,10 @@ export class DiscordRoleSync {
   async sync(guild: Guild, userId: string, majorIndex: number): Promise<{ synced: boolean; message: string }> {
     const now = new Date().toISOString();
     try {
-      const mappings = this.repository.getRealmRoles(guild.id);
+      const mappings = await this.repository.getRealmRoles(guild.id);
       const targetId = mappings.get(majorIndex);
       if (!targetId) {
-        this.repository.setRoleSyncPending(guild.id, userId, false, now);
+        await this.repository.setRoleSyncPending(guild.id, userId, false, now);
         return { synced: true, message: 'Server chưa ánh xạ role cho cảnh giới này.' };
       }
       const bot = guild.members.me ?? await guild.members.fetchMe();
@@ -22,10 +22,10 @@ export class DiscordRoleSync {
       const managedIds = [...mappings.values()].filter((id) => id !== targetId && member.roles.cache.has(id));
       if (managedIds.length) await member.roles.remove(managedIds, 'Đồng bộ cảnh giới tu tiên');
       if (!member.roles.cache.has(targetId)) await member.roles.add(targetId, 'Đồng bộ cảnh giới tu tiên');
-      this.repository.setRoleSyncPending(guild.id, userId, false, now);
+      await this.repository.setRoleSyncPending(guild.id, userId, false, now);
       return { synced: true, message: `Đã đồng bộ role ${target.name}.` };
     } catch (error) {
-      this.repository.setRoleSyncPending(guild.id, userId, true, now);
+      await this.repository.setRoleSyncPending(guild.id, userId, true, now);
       return { synced: false, message: error instanceof Error ? error.message : 'Discord API lỗi khi đồng bộ role.' };
     }
   }

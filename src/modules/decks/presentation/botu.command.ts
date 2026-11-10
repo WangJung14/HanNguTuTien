@@ -49,48 +49,48 @@ export async function handleBotu(interaction: ChatInputCommandInteraction, servi
 
   switch (sub) {
     case 'tao': {
-      const deck = service.create(guildId, userId, opt.getString('ten', true), opt.getString('mota') ?? '');
+      const deck = await service.create(guildId, userId, opt.getString('ten', true), opt.getString('mota') ?? '');
       await interaction.editReply(`✅ Đã tạo bộ **${deck.name}** (#${deck.id}), mặc định 🔒 riêng tư. Tra từ bằng \`/tudien\` rồi nhấn **Thêm vào bộ**.`);
       return;
     }
     case 'danhsach':
-      await interaction.editReply(buildDeckList(service.listOwned(guildId, userId), '🎒 Bộ Từ Vựng của bạn', 'Chưa có bộ nào. Dùng `/botu tao` để tạo bộ đầu tiên.'));
+      await interaction.editReply(buildDeckList(await service.listOwned(guildId, userId), '🎒 Bộ Từ Vựng của bạn', 'Chưa có bộ nào. Dùng `/botu tao` để tạo bộ đầu tiên.'));
       return;
     case 'khampha':
-      await interaction.editReply(buildDeckList(service.listPublic(guildId), '🌍 Tàng Kinh Các — Bộ từ công khai', 'Chưa có bộ công khai nào trong server.'));
+      await interaction.editReply(buildDeckList(await service.listPublic(guildId), '🌍 Tàng Kinh Các — Bộ từ công khai', 'Chưa có bộ công khai nào trong server.'));
       return;
     case 'xem':
-      await interaction.editReply(buildDeckView(service.view(guildId, userId, id(), opt.getInteger('trang') ?? 1)));
+      await interaction.editReply(buildDeckView(await service.view(guildId, userId, id(), opt.getInteger('trang') ?? 1)));
       return;
     case 'them': {
-      const added = service.add(guildId, userId, id(), word());
+      const added = await service.add(guildId, userId, id(), word());
       await interaction.editReply(added ? '✅ Đã thêm mục từ vào bộ và Túi Càn Khôn.' : '📦 Từ này đã có trong bộ rồi.');
       return;
     }
     case 'bo': {
-      const removed = service.remove(guildId, userId, id(), word());
+      const removed = await service.remove(guildId, userId, id(), word());
       await interaction.editReply(removed ? '🧹 Đã bỏ từ khỏi bộ. Từ vẫn nằm trong Túi Càn Khôn.' : 'Không tìm thấy từ này trong bộ.');
       return;
     }
     case 'chuyen': {
-      const moved = service.move(guildId, userId, opt.getInteger('tu', true), opt.getInteger('den', true), word());
+      const moved = await service.move(guildId, userId, opt.getInteger('tu', true), opt.getInteger('den', true), word());
       await interaction.editReply(moved ? '📦 Đã chuyển từ sang bộ đích.' : 'Không thấy từ đó trong bộ nguồn.');
       return;
     }
     case 'congkhai': {
-      const deck = service.visibility(guildId, userId, id(), opt.getBoolean('bat', true));
+      const deck = await service.visibility(guildId, userId, id(), opt.getBoolean('bat', true));
       await interaction.editReply(deck.isPublic
         ? `🌍 Bộ **${deck.name}** (#${deck.id}) đã công khai trong server. Người khác có thể dùng \`/botu saochep id:${deck.id}\`.`
         : `🔒 Bộ **${deck.name}** đã chuyển về riêng tư.`);
       return;
     }
     case 'saochep': {
-      const copied = service.copy(guildId, userId, id(), opt.getString('ten') ?? undefined);
+      const copied = await service.copy(guildId, userId, id(), opt.getString('ten') ?? undefined);
       await interaction.editReply(`📚 Đã sao chép thành bộ **${copied.name}** (#${copied.id}), có **${copied.wordCount}** từ. Bản sao mặc định riêng tư.`);
       return;
     }
     case 'xoa': {
-      const deck = service.getVisible(guildId, userId, id());
+      const deck = await service.getVisible(guildId, userId, id());
       if (deck.ownerId !== userId) {
         await interaction.editReply('⛔ Bạn chỉ được xóa bộ do mình tạo.');
         return;

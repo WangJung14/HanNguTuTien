@@ -48,19 +48,21 @@ export type NewDictationSession = Pick<
   expiresAt: string;
 };
 
+export type Awaitable<T> = T | Promise<T>;
+
 export interface DictationRepository {
-  findActive(guildId: string, userId: string, now: string): DictationSession | null;
-  findSession(sessionId: string): DictationSession | null;
-  findQuestion(sessionId: string, questionIndex: number): DictationQuestion | null;
-  findQuestions(sessionId: string): DictationQuestion[];
+  findActive(guildId: string, userId: string, now: string): Awaitable<DictationSession | null>;
+  findSession(sessionId: string): Awaitable<DictationSession | null>;
+  findQuestion(sessionId: string, questionIndex: number): Awaitable<DictationQuestion | null>;
+  findQuestions(sessionId: string): Awaitable<DictationQuestion[]>;
   createSession(
     session: NewDictationSession,
     questions: NewDictationQuestion[],
     now: string,
-  ): DictationSession;
-  bindMessage(sessionId: string, messageId: string, now: string, expiresAt: string): boolean;
-  markHint(sessionId: string, questionIndex: number, now: string, expiresAt: string): boolean;
-  incrementReplay(sessionId: string, questionIndex: number, now: string, expiresAt: string): boolean;
+  ): Awaitable<DictationSession>;
+  bindMessage(sessionId: string, messageId: string, now: string, expiresAt: string): Awaitable<boolean>;
+  markHint(sessionId: string, questionIndex: number, now: string, expiresAt: string): Awaitable<boolean>;
+  incrementReplay(sessionId: string, questionIndex: number, now: string, expiresAt: string): Awaitable<boolean>;
   submitAnswer(
     sessionId: string,
     questionIndex: number,
@@ -68,9 +70,9 @@ export interface DictationRepository {
     isCorrect: boolean,
     now: string,
     expiresAt: string,
-  ): boolean;
-  advance(sessionId: string, questionIndex: number, now: string, expiresAt: string): DictationSession | null;
-  expire(sessionId: string, now: string): void;
+  ): Awaitable<boolean>;
+  advance(sessionId: string, questionIndex: number, now: string, expiresAt: string): Awaitable<DictationSession | null>;
+  expire(sessionId: string, now: string): Awaitable<void>;
 }
 
 export interface AudioProvider {

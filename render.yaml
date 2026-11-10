@@ -18,6 +18,12 @@ services:
         value: ./data/cvdict-app.sqlite
       - key: PVE_QUESTION_PACK_PATH
         value: ./data/question-packs/hsk-sample.json
+      - key: DICTATION_TTS_PROVIDER
+        value: piper
+      - key: PIPER_TTS_URL
+        sync: false
+      - key: PIPER_TTS_MODEL
+        sync: false
       - key: DISCORD_TOKEN
         sync: false
       - key: DISCORD_CLIENT_ID

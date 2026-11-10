@@ -9,6 +9,7 @@ export { AzureSpeechAudioProvider } from './infrastructure/azure-speech-audio.pr
 export { PiperAudioProvider } from './infrastructure/piper-audio.provider.js';
 export { createAudioProvider } from './infrastructure/audio-provider.factory.js';
 export { SqliteDictationRepository } from './infrastructure/sqlite-dictation.repository.js';
+export { PostgresDictationRepository } from './infrastructure/postgres-dictation.repository.js';
 export { khaobaiDefinition, handleKhaobai } from './presentation/khaobai.command.js';
 export {
   handleDictationButton, handleDictationModal, handleDictationSelect,

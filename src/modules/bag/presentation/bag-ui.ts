@@ -19,8 +19,8 @@ export function createSaveButtons(entries: DictionaryEntry[], ownerId: string) {
   return [row];
 }
 
-export function buildBagMessage(service: BagService, guildId: string, userId: string, page: number) {
-  const bag = service.list(guildId, userId, page);
+export async function buildBagMessage(service: BagService, guildId: string, userId: string, page: number) {
+  const bag = await service.list(guildId, userId, page);
   const embed = new EmbedBuilder()
     .setColor(0x6c5ce7)
     .setTitle('🎒 Túi Càn Khôn — Kho từ vựng')

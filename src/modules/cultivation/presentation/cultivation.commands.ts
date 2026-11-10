@@ -27,18 +27,18 @@ export const canhgioiroleDefinition = new SlashCommandBuilder().setName('canhgio
 
 export async function handleTuvi(interaction: ChatInputCommandInteraction, realms: RealmService) {
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });
-  await interaction.reply({ embeds: [buildProfileEmbed(realms.getProgress(interaction.guildId, interaction.user.id))], flags: MessageFlags.Ephemeral });
+  await interaction.reply({ embeds: [buildProfileEmbed(await realms.getProgress(interaction.guildId, interaction.user.id))], flags: MessageFlags.Ephemeral });
 }
 export async function handleLichsu(interaction: ChatInputCommandInteraction, xp: XpService, breakthrough: BreakthroughService) {
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });
-  await interaction.reply({ embeds: [buildHistoryEmbed(xp.history(interaction.guildId, interaction.user.id), breakthrough.history(interaction.guildId, interaction.user.id))], flags: MessageFlags.Ephemeral });
+  await interaction.reply({ embeds: [buildHistoryEmbed(await xp.history(interaction.guildId, interaction.user.id), await breakthrough.history(interaction.guildId, interaction.user.id))], flags: MessageFlags.Ephemeral });
 }
 export async function handleDotpha(interaction: ChatInputCommandInteraction, service: BreakthroughService) {
   if (!interaction.guildId) return void await interaction.reply({ content: 'Dùng lệnh này trong server.', flags: MessageFlags.Ephemeral });
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const started = await service.start(interaction.guildId, interaction.user.id, interaction.options.getInteger('botu', true));
   const response = await interaction.editReply(buildBreakthroughQuestion(started.attempt, started.audio));
-  service.bindMessage(started.attempt.id, response.id);
+  await service.bindMessage(started.attempt.id, response.id);
 }
 export async function handleRealmRole(interaction: ChatInputCommandInteraction, repository: CultivationRepository,
   realms: RealmService, roleSync: DiscordRoleSync) {
@@ -54,16 +54,16 @@ export async function handleRealmRole(interaction: ChatInputCommandInteraction, 
     const botMember = interaction.guild.members.me ?? await interaction.guild.members.fetchMe();
     if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) return void await interaction.reply({ content: 'Bot thiếu quyền Manage Roles.', flags: MessageFlags.Ephemeral });
     if (botMember.roles.highest.comparePositionTo(role) <= 0) return void await interaction.reply({ content: 'Role của bot phải nằm cao hơn role cảnh giới.', flags: MessageFlags.Ephemeral });
-    repository.setRealmRole(interaction.guild.id, index, role.id, new Date().toISOString());
+    await repository.setRealmRole(interaction.guild.id, index, role.id, new Date().toISOString());
     await interaction.reply({ content: `✅ Đã ánh xạ **${REALMS[index]!.name}** → ${role}.`, flags: MessageFlags.Ephemeral }); return;
   }
   if (sub === 'go') {
     const index = interaction.options.getInteger('canhgioi', true);
-    repository.removeRealmRole(interaction.guild.id, index);
+    await repository.removeRealmRole(interaction.guild.id, index);
     await interaction.reply({ content: `Đã gỡ ánh xạ role của **${REALMS[index]!.name}**.`, flags: MessageFlags.Ephemeral }); return;
   }
   const user = interaction.options.getUser('thanhvien', true);
-  const progress = realms.getProgress(interaction.guild.id, user.id);
+  const progress = await realms.getProgress(interaction.guild.id, user.id);
   const result = await roleSync.sync(interaction.guild, user.id, progress.profile.majorIndex);
   await interaction.reply({ content: `${result.synced ? '✅' : '⚠️'} ${result.message}`, flags: MessageFlags.Ephemeral });
 }

@@ -10,9 +10,13 @@
 - `/health` bind `0.0.0.0:$PORT`, không truy vấn DB và không trả secret.
 - `render.yaml` khai báo đúng một Free Web Service.
 
-> Chưa deploy Public Beta: repositories runtime vẫn đang dùng SQLite đồng bộ. Cần hoàn tất refactor async PostgreSQL trước khi bật `DATABASE_PROVIDER=postgres` trên Render.
+Runtime hiện đã có PostgreSQL adapters cho Bag, Deck, Dictation, Cultivation/XP, Quest, Meditation, Mountain và PvE; Dictionary tiếp tục đọc `data/cvdict-app.sqlite` ở chế độ chỉ đọc. `DATABASE_PROVIDER=postgres` được chọn trong `render.yaml`, không fallback sang SQLite nếu PostgreSQL lỗi.
+
+**Chưa xác nhận deploy production từ môi trường này.** Bộ test, typecheck và build chạy cục bộ; chưa có kiểm thử tích hợp PostgreSQL trong phiên này. Trước khi bật bot, phải xác nhận kết nối và schema Supabase đúng bằng migration/verify scripts và cấu hình các biến môi trường trong Render.
 
 ## Commands dữ liệu
+
+Các lệnh migration/import/verify/backup/rollback chạy thủ công từ máy quản trị và dùng `SUPABASE_MIGRATION_URL` trong môi trường local. Không dán connection URI vào chat hoặc commit vào repository.
 
 ```powershell
 npm.cmd run db:pg:migrate
@@ -42,6 +46,8 @@ Remove-Item Env:CONFIRM_POSTGRES_ROLLBACK
 
 Rollback chỉ xóa bảng bot trên Supabase; không xóa `progress.sqlite`.
 
+Chạy migration và import từ máy quản trị đáng tin cậy, không cần đưa `SUPABASE_MIGRATION_URL` lên Render. Sau import, chạy verify; không chạy import thay thế sau khi bot đã bắt đầu ghi dữ liệu production nếu chưa có kế hoạch cutover rõ ràng.
+
 ## Backup Free Plan
 
 Chạy `db:pg:backup` định kỳ và sao chép file `.json.gz` ra ít nhất một nơi độc lập khỏi máy local và Supabase (ví dụ cloud drive riêng). Thư mục `backups/` bị gitignore. Free Plan không có automatic backup/PITR.
@@ -53,12 +59,16 @@ Các secret cần nhập trong Render Dashboard:
 - `DISCORD_TOKEN`
 - `DISCORD_CLIENT_ID`
 - `DISCORD_DEV_GUILD_ID`
-- `SUPABASE_DATABASE_URL` — Session Pooler port 5432
+- `SUPABASE_DATABASE_URL` — Supabase Session Pooler URI, port 5432
+- `PIPER_TTS_URL` — base URL Piper HTTP Server có thể truy cập từ Render; provider tự thêm `/synthesize`. Không dùng `127.0.0.1` trừ khi Piper chạy cùng container.
+- `PIPER_TTS_MODEL` — tên voice/model được server Piper cấu hình.
 
 Không đưa `SUPABASE_MIGRATION_URL` lên Render. `PORT` do Render tự cấp.
+
+Nếu thiếu `PIPER_TTS_URL` hoặc `PIPER_TTS_MODEL`, bot vẫn có thể chạy nhưng `/khaobai` không có audio và sẽ báo lỗi; cần cấu hình Piper trước khi dùng tính năng này.
 
 External monitor gọi `GET https://<service>.onrender.com/health` mỗi 8 phút. Response chỉ gồm `status`, `discord`, uptime và timestamp. Ping không bảo đảm 24/7; Render vẫn có thể restart/suspend và giới hạn 750 giờ/tháng.
 
 ## TTS
 
-CVDICT read-only được đóng gói tại `data/cvdict-app.sqlite`. Không dùng filesystem Render cho progress. Piper động chưa được chứng minh phù hợp 512 MB/0.1 CPU; không bật trong Public Beta cho đến khi có benchmark. Audio tĩnh cần được đóng gói hoặc provider phải trả lỗi rõ khi thiếu audio.
+CVDICT read-only và bộ câu hỏi `data/question-packs/hsk-sample.json` cần được đóng gói cùng source. Không dùng filesystem Render cho progress. Piper nên chạy như một HTTP service riêng; cấu hình URL phải truy cập được từ Render. Bảo vệ endpoint Piper khỏi truy cập lạm dụng. Piper chưa được benchmark trong deployment này; theo dõi độ trễ, bộ nhớ và giới hạn dịch vụ trước khi mở rộng sử dụng.

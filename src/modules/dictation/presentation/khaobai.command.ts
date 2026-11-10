@@ -26,16 +26,16 @@ export async function handleKhaobai(
     const response = resumed.question.answeredAt
       ? await interaction.editReply(buildAnsweredMessage(resumed.session, resumed.question))
       : await interaction.editReply(buildQuestionMessage(resumed.session, resumed.question, resumed.audio ?? undefined));
-    service.bindMessage(resumed.session.id, response.id);
+    await service.bindMessage(resumed.session.id, response.id);
     return;
   }
 
-  const active = service.getActiveSession(interaction.guildId, interaction.user.id);
+  const active = await service.getActiveSession(interaction.guildId, interaction.user.id);
   if (active) {
     await interaction.editReply('Bạn đang có một phiên khảo bài. Dùng `/khaobai tieptuc` để mở lại hoặc hoàn thành phiên đó trước.');
     return;
   }
-  const decks = service.listOwnedDecks(interaction.guildId, interaction.user.id);
+  const decks = await service.listOwnedDecks(interaction.guildId, interaction.user.id);
   if (!decks.length) {
     await interaction.editReply('Bạn chưa có bộ từ cá nhân. Dùng `/botu tao`, thêm ít nhất 5 từ bằng `/tudien`, rồi quay lại đây.');
     return;

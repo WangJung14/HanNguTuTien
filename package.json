@@ -13,12 +13,12 @@
     "typecheck": "tsc --noEmit",
     "register": "tsx src/scripts/register-commands.ts",
     "check:db": "tsx src/scripts/check-dictionary.ts",
-    "test": "vitest run"
-    ,"db:pg:migrate": "tsx src/scripts/postgres-migrate.ts"
-    ,"db:pg:import": "tsx src/scripts/postgres-import.ts"
-    ,"db:pg:verify": "tsx src/scripts/postgres-verify.ts"
-    ,"db:pg:backup": "tsx src/scripts/postgres-backup.ts"
-    ,"db:pg:rollback": "tsx src/scripts/postgres-rollback.ts"
+    "test": "vitest run",
+    "db:pg:migrate": "tsx src/scripts/postgres-migrate.ts",
+    "db:pg:import": "tsx src/scripts/postgres-import.ts",
+    "db:pg:verify": "tsx src/scripts/postgres-verify.ts",
+    "db:pg:backup": "tsx src/scripts/postgres-backup.ts",
+    "db:pg:rollback": "tsx src/scripts/postgres-rollback.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

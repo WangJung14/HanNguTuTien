@@ -4,8 +4,8 @@ import type { CultivationRepository, RealmProgress } from '../domain/cultivation
 export class RealmService {
   constructor(private readonly repository: CultivationRepository) {}
 
-  getProgress(guildId: string, userId: string): RealmProgress {
-    const value = this.repository.getOrCreateProfile(guildId, userId, new Date().toISOString());
+  async getProgress(guildId: string, userId: string): Promise<RealmProgress> {
+    const value = await this.repository.getOrCreateProfile(guildId, userId, new Date().toISOString());
     const major = REALMS[value.majorIndex] ?? REALMS[0]!;
     const nextMajor = REALMS[value.majorIndex + 1] ?? null;
     const unlockedMinor = [...major.minors].reverse().find((minor) => value.totalXp >= minor.minXp) ?? major.minors[0]!;

@@ -17,5 +17,5 @@ export async function handleTuikho(interaction: ChatInputCommandInteraction, ser
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const page = interaction.options.getInteger('trang') ?? 1;
-  await interaction.editReply(buildBagMessage(service, interaction.guildId, interaction.user.id, page));
+  await interaction.editReply(await buildBagMessage(service, interaction.guildId, interaction.user.id, page));
 }

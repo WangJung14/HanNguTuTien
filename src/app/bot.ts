@@ -9,16 +9,16 @@ import {
 import {
   CultivationError, handleCultivationButton, handleCultivationModal, handleDotpha, handleLichsu,
   handleRealmRole, handleTuvi, type BreakthroughService, type DiscordRoleSync, type RealmService,
-  type SqliteCultivationRepository, type XpService,
+  type CultivationRepository, type XpService,
 } from '../modules/cultivation/index.js';
 import { handleBequan,handleBequanConfig,handleDiemdanh,handleNhiemvu,type QuestService } from '../modules/quests/index.js';
 import type { MeditationService } from '../modules/meditation/index.js';
 import{handleLeonui,handleMountainButton,MountainError,type MountainMatchService,type MountainScheduler}from'../modules/mountain/index.js';
 import{handleBicanh,handleBoss,handlePveButton,PveError,type PveScheduler,type PveService}from'../modules/pve/index.js';
 
-type CultivationDependencies = { repository: SqliteCultivationRepository; realms: RealmService; xp: XpService;
+type CultivationDependencies = { repository: CultivationRepository; realms: RealmService; xp: XpService;
   breakthrough: BreakthroughService; roleSync: DiscordRoleSync };
-type Phase41Dependencies={quests:QuestService;meditation:MeditationService;rewards:{
+type Phase41Dependencies={quests:Pick<QuestService,'recordSavedWord'|'recordCorrectAnswer'|'recordCompletedSession'|'recordMeditation'|'getDaily'|'getStreak'|'activityDays'>;meditation:Pick<MeditationService,'setChannel'|'getChannel'|'start'|'end'|'endAll'|'endGuild'|'processDue'|'status'>;rewards:{
   awardQuestion(...args:Parameters<XpService['awardQuestion']>):ReturnType<XpService['awardQuestion']>;
   awardCompletion(...args:Parameters<XpService['awardCompletion']>):ReturnType<XpService['awardCompletion']>;
 }};
