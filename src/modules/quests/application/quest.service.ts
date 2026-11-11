@@ -29,6 +29,7 @@ export class QuestService {
     const date = vietnamDate(now); await this.increment(guildId,userId,date,'meditate_minutes',minutes,now.toISOString());
     await this.reconcile(guildId,userId,date,now);
   }
+  async recordLearningDay(guildId:string,userId:string,sessionId:string,now=new Date()):Promise<void>{await this.recordStreak(guildId,userId,sessionId,vietnamDate(now),now.toISOString());}
   async getDaily(guildId: string, userId: string, now = new Date()): Promise<QuestProgress[]> {
     const date = vietnamDate(now); await this.ensureAll(guildId,userId,date,now.toISOString()); await this.reconcile(guildId,userId,date,now);
     return this.sqlite.prepare(`SELECT quest_key AS questKey, progress, completed_at AS completedAt,

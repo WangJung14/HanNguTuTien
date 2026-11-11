@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 export function applySectMigrations(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as number;
-  if (version > 10) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 11) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version < 8) throw new Error('Run Phase 5.1 migration before Phase 6.');
   if (version === 8) db.transaction(() => {
     db.exec(`

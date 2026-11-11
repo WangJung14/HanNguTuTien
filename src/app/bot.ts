@@ -19,6 +19,7 @@ import{handleLeonui,handleMountainButton,MountainError,type MountainMatchService
 import{handleBicanh,handleBoss,handlePveButton,PveError,type PveScheduler,type PveService}from'../modules/pve/index.js';
 import{handleBangxeptuvi,handleTongmon,SectError,type CultivationLeaderboardService,type SectService}from'../modules/sects/index.js';
 import{AdventureError,handleAdventureInteraction,handleGiangho,type AdventureService}from'../modules/adventure/index.js';
+import{handleSrsButton,handleSrsSelect,handleTamphap,SrsError,type SrsService}from'../modules/srs/index.js';
 
 type CultivationDependencies = { repository: CultivationRepository; realms: RealmService; xp: XpService;
   breakthrough: BreakthroughService; roleSync: DiscordRoleSync };
@@ -30,6 +31,7 @@ type MountainDependencies={service:MountainMatchService;scheduler:MountainSchedu
 type PveDependencies={service:PveService;scheduler:PveScheduler};
 type SectDependencies={service:SectService;leaderboard:CultivationLeaderboardService};
 type AdventureDependencies={service:AdventureService};
+type SrsDependencies={service:SrsService};
 
 export function buildBot(
   dictionaryService: DictionaryService,
@@ -42,6 +44,7 @@ export function buildBot(
   pve:PveDependencies,
   sects:SectDependencies,
   adventure:AdventureDependencies,
+  srs:SrsDependencies,
 ) {
   const client = new Client({ intents: [GatewayIntentBits.Guilds,GatewayIntentBits.GuildVoiceStates] });
 
@@ -74,6 +77,7 @@ export function buildBot(
       if(interaction.isButton()&&interaction.customId.startsWith('mountain:')){await handleMountainButton(interaction,mountain.service,mountain.scheduler);return;}
       if(interaction.isButton()&&interaction.customId.startsWith('pve:')){await handlePveButton(interaction,pve.service,pve.scheduler);return;}
       if(interaction.isButton()&&interaction.customId.startsWith('adventure:')){await handleAdventureInteraction(interaction,adventure.service);return;}
+      if(interaction.isButton()&&interaction.customId.startsWith('srs:')){await handleSrsButton(interaction,srs.service);return;}
       if (interaction.isStringSelectMenu() && interaction.customId.startsWith('deck:')) {
         await handleDeckSelect(interaction, deckService);
         return;
@@ -83,6 +87,7 @@ export function buildBot(
         return;
       }
       if(interaction.isStringSelectMenu()&&interaction.customId.startsWith('adventure:')){await handleAdventureInteraction(interaction,adventure.service);return;}
+      if(interaction.isStringSelectMenu()&&interaction.customId.startsWith('srs:')){await handleSrsSelect(interaction,srs.service);return;}
       if (interaction.isModalSubmit() && interaction.customId.startsWith('dictation:')) {
         await handleDictationModal(interaction, dictationService, phase41.rewards);
         return;
@@ -136,11 +141,12 @@ export function buildBot(
         case 'tongmon':await handleTongmon(interaction,sects.service);break;
         case 'bangxeptuvi':await handleBangxeptuvi(interaction,sects.leaderboard);break;
         case 'giangho':await handleGiangho(interaction,adventure.service);break;
+        case 'tamphap':await handleTamphap(interaction,srs.service);break;
       }
     } catch (error) {
       console.error('Discord interaction failed:', error);
       if (!interaction.isRepliable()) return;
-      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError || error instanceof SectError || error instanceof AdventureError
+      const message = error instanceof DeckError || error instanceof DictationError || error instanceof DictationAudioError || error instanceof CultivationError || error instanceof MountainError || error instanceof PveError || error instanceof SectError || error instanceof AdventureError || error instanceof SrsError
         ? `⚠️ ${error.message}` : 'Sư phụ gặp lỗi khi xử lý. Hãy thử lại sau.';
       try {
         if (interaction.deferred || interaction.replied) {

@@ -2,7 +2,7 @@ import type Database from 'better-sqlite3';
 
 export function applyPhase41Migrations(sqlite: Database.Database): void {
   const version = sqlite.pragma('user_version', { simple: true }) as number;
-  if (version > 10) throw new Error(`Progress DB version ${version} is newer than this bot.`);
+  if (version > 11) throw new Error(`Progress DB version ${version} is newer than this bot.`);
   if (version < 5) throw new Error('Run Phase 4 migration before Phase 4.1 migration.');
   if (version === 5) {
     sqlite.transaction(() => {

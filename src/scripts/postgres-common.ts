@@ -27,4 +27,5 @@ export const progressTables = [
   'sects','sect_members','sect_join_requests','sect_contribution_ledger','sect_contribution_claims','sect_quests',
   'sect_quest_progress','sect_quest_events','guild_cultivation_leaderboard_config',
   'adventure_progress','adventure_answers','adventure_chapter_completions',
+  'srs_cards','srs_sessions','srs_review_logs','srs_settings',
 ] as const;

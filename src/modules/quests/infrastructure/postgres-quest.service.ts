@@ -5,7 +5,7 @@ import type { QuestProgress, QuestService, Streak } from '../application/quest.s
 
 export class PostgresQuestService implements Pick<QuestService,
   'recordSavedWord' | 'recordCorrectAnswer' | 'recordCompletedSession' | 'recordMeditation' |
-  'getDaily' | 'getStreak' | 'activityDays'> {
+  'getDaily' | 'getStreak' | 'activityDays' | 'recordLearningDay'> {
   constructor(private readonly sql: Sql, private readonly xp: XpService) {}
 
   async recordSavedWord(guildId: string, userId: string, entryId: number, now = new Date()): Promise<void> {
@@ -39,6 +39,7 @@ export class PostgresQuestService implements Pick<QuestService,
     await this.increment(guildId, userId, date, 'meditate_minutes', minutes, now.toISOString());
     await this.reconcile(guildId, userId, date, now);
   }
+  async recordLearningDay(guildId:string,userId:string,sessionId:string,now=new Date()):Promise<void>{await this.recordStreak(guildId,userId,sessionId,vietnamDate(now),now.toISOString());}
 
   async getDaily(guildId: string, userId: string, now = new Date()): Promise<QuestProgress[]> {
     const date = vietnamDate(now);

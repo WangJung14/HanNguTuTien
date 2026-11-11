@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sect_contribution_ledger (
   source TEXT NOT NULL, reward_key TEXT NOT NULL UNIQUE, earned_date TEXT NOT NULL,
   week_key TEXT NOT NULL, created_at TEXT NOT NULL
 );
+ALTER TABLE sect_contribution_ledger ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
 CREATE INDEX IF NOT EXISTS idx_sect_cp_daily ON sect_contribution_ledger(guild_id,user_id,earned_date);
 CREATE INDEX IF NOT EXISTS idx_sect_cp_weekly ON sect_contribution_ledger(guild_id,sect_id,week_key,amount);
 CREATE TABLE IF NOT EXISTS sect_contribution_claims (

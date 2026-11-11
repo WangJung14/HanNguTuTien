@@ -3,8 +3,8 @@ import { missingSchemaVersions } from '../src/shared/database/postgres-readiness
 
 describe('PostgreSQL runtime readiness', () => {
   it('requires every runtime migration version', () => {
-    expect(missingSchemaVersions([1, 2, 3, 4, 5])).toEqual([]);
-    expect(missingSchemaVersions([1, 3, 4, 5])).toEqual([2]);
-    expect(missingSchemaVersions([])).toEqual([1, 2, 3, 4, 5]);
+    expect(missingSchemaVersions([1, 2, 3, 4, 5, 6])).toEqual([]);
+    expect(missingSchemaVersions([1, 3, 4, 5, 6])).toEqual([2]);
+    expect(missingSchemaVersions([])).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });

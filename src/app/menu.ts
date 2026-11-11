@@ -49,6 +49,11 @@ export function buildMenuEmbed(): EmbedBuilder {
         '`/giangho chuong:<1–3>` — vào lại một chương đã mở khóa để ôn tập.',
         'Ba chương, mỗi chương 5 cảnh; trả lời sai được giải thích và không mất XP.',
       ].join('\n') },
+      { name: '🧠 Ngộ Đạo Tâm Pháp', value: [
+        '`/tamphap on` — bắt đầu hoặc tiếp tục phiên flashcard SRS.',
+        '`/tamphap homnay|thongke` — xem thẻ đến hạn và tiến độ ghi nhớ.',
+        '`/tamphap caidat tumoingay:<0–100>` — chỉnh giới hạn từ mới; thẻ đến hạn không bị giới hạn.',
+      ].join('\n') },
       { name: '⚙️ Quản trị server', value: [
         '**Admin** `/xpkenh dat|xoa` — đặt hoặc tắt kênh thông báo XP.',
         '**Admin** `/xpadmin user:<thành viên>` — thưởng/phạt XP có ledger.',

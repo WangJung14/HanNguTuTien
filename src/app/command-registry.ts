@@ -10,6 +10,7 @@ import {leonuiDefinition} from '../modules/mountain/index.js';
 import{bicanhDefinition,bossDefinition}from'../modules/pve/index.js';
 import{bangxeptuviDefinition,tongmonDefinition}from'../modules/sects/index.js';
 import{gianghoDefinition}from'../modules/adventure/index.js';
+import{tamphapDefinition}from'../modules/srs/index.js';
 
 export const pingDefinition = new SlashCommandBuilder()
   .setName('ping').setDescription('Kiểm tra bot còn hoạt động hay không');
@@ -24,4 +25,5 @@ export const commandDefinitions = [
   bicanhDefinition,bossDefinition,
   tongmonDefinition,bangxeptuviDefinition,
   gianghoDefinition,
+  tamphapDefinition,
 ];

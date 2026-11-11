@@ -20,6 +20,7 @@ import { closeHealthServer, startHealthServer } from './shared/http/health-serve
 import { assertPostgresReady } from './shared/database/postgres-readiness.js';
 import { CultivationLeaderboardScheduler, CultivationLeaderboardService, PostgresSectRepository, SectContributionService, SectService, SqliteSectRepository } from './modules/sects/index.js';
 import { AdventureContentService, AdventureService, PostgresAdventureRepository, SqliteAdventureRepository } from './modules/adventure/index.js';
+import { PostgresSrsRepository, SrsService, SqliteSrsRepository } from './modules/srs/index.js';
 
 const config = getDiscordConfig();
 const databaseProvider = getDatabaseProvider();
@@ -74,6 +75,7 @@ const xpService = new XpService(cultivationRepository, async (event: XpAwardEven
     secret_realm_clear: 'vượt Bí Cảnh',
     boss_hsk_win: 'đánh bại Boss HSK',
     adventure_chapter: 'hoàn thành chương Giang Hồ Kỳ Ngộ',
+    srs_daily: 'hoàn thành ôn tập Ngộ Đạo Tâm Pháp',
   };
   const reason = sourceNames[event.source] ?? event.source.replaceAll('_', ' ');
   await channel.send({
@@ -91,6 +93,8 @@ const roleSync = new DiscordRoleSync(cultivationRepository);
 const questService = postgresConnection
   ? new PostgresQuestService(postgresConnection, xpService)
   : new QuestService(progressConnection!.sqlite, xpService);
+const srsRepository=postgresConnection?new PostgresSrsRepository(postgresConnection):new SqliteSrsRepository(progressConnection!.sqlite);
+const srsService=new SrsService(srsRepository,dictionaryService,xpService,questService);
 const meditationService = postgresConnection
   ? new PostgresMeditationService(postgresConnection, xpService, questService)
   : new MeditationService(progressConnection!.sqlite, xpService, questService);
@@ -117,7 +121,7 @@ const learningRewards={
 };
 const client = buildBot(dictionaryService, bagService, deckService, dictationService, {
   repository: cultivationRepository, realms: realmService, xp: xpService, breakthrough: breakthroughService, roleSync,
-},{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler},{service:sectService,leaderboard:leaderboardService},{service:adventureService});
+},{quests:questService,meditation:meditationService,rewards:learningRewards},{service:mountainService,scheduler:mountainScheduler},{service:pveService,scheduler:pveScheduler},{service:sectService,leaderboard:leaderboardService},{service:adventureService},{service:srsService});
 discordClient = client;
 const stopMeditation=attachMeditationRunner(client,meditationService);
 const healthServer=startHealthServer(client);

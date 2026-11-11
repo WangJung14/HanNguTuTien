@@ -12,6 +12,7 @@ import { applyMountainMigrations } from '../../modules/mountain/infrastructure/m
 import { applyPveMigrations } from '../../modules/pve/infrastructure/migrations.js';
 import { applySectMigrations } from '../../modules/sects/infrastructure/migrations.js';
 import { applyAdventureMigrations } from '../../modules/adventure/infrastructure/migrations.js';
+import { applySrsMigrations } from '../../modules/srs/infrastructure/migrations.js';
 
 export function openProgress() {
   const path = getProgressPath();
@@ -29,6 +30,7 @@ export function openProgress() {
   applyPveMigrations(sqlite);
   applySectMigrations(sqlite);
   applyAdventureMigrations(sqlite);
+  applySrsMigrations(sqlite);
   return { db: drizzle(sqlite), sqlite, close: () => sqlite.close() };
 }
 
